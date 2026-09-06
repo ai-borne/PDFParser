@@ -105,6 +105,9 @@ jobs:
       - name: Run Lint, Code Style & Tests (Android + Common)
         run: ./gradlew check -x iosX64Test -x iosSimulatorArm64Test
 
+      - name: Verify R8 Release Minification & Rules
+        run: ./gradlew :composeApp:minifyReleaseWithR8 -PallowPlaceholderGemmaModel=true
+
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v4
         if: always()

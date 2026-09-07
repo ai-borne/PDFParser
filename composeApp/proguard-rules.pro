@@ -29,7 +29,6 @@
 -dontwarn io.ktor.**
 
 # 5. Koin Dependency Injection
--keep class * implements org.koin.core.module.Module
 -keepclassmembers class * {
     @org.koin.core.annotation.* <fields>;
     @org.koin.core.annotation.* <methods>;

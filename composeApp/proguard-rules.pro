@@ -39,8 +39,8 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
--keep class com.google.ai.edge.litert.** { *; }
--dontwarn com.google.ai.edge.litert.**
+-keep class com.google.ai.edge.litertlm.** { *; }
+-dontwarn com.google.ai.edge.litertlm.**
 
 # 7. Compose Runtime & Activity
 -dontwarn androidx.compose.ui.platform.**

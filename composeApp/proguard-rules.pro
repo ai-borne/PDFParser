@@ -53,6 +53,5 @@
 -dontwarn org.slf4j.impl.**
 
 # 9. Firebase Crashlytics & Telemetry
--keep public class * extends java.lang.Exception
 -keepclassmembers class com.google.firebase.crashlytics.** { *; }
 -dontwarn com.google.firebase.crashlytics.**

@@ -6,6 +6,126 @@
 
 ---
 
+## 0. Review Notes (2026-09-07) — read before executing the checklist
+
+An expert review of this plan (industry research + codebase check) confirmed the overall two-phase
+strategy but corrected/refined a few points. Keep this section updated as the guiding reference for
+future paywall strategy — don't just tick boxes below without re-reading this.
+
+- **Android's free-first launch is not optional** — it's forced by Google Play policy (closed
+  testing hides the public URL BillDesk requires), not by anything in our code. No way to route
+  around it.
+- **Correction**: checklist item 2.2 originally said "20 active opted-in testers." Google reduced
+  this to **12 testers / 14 days** on 2024-12-11 ([Play Console Help](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)).
+  Recruit 12, not 20.
+- **Correction**: BillDesk/PA-CB isn't limited to cross-border sales — Google's rollout requires
+  **any** new merchant account selling in India (domestic included) to verify through BillDesk from
+  2026-01-01. There's no "stay domestic-only" escape hatch.
+- **iOS does *not* need the free-unlock as a technical fix** — the Guideline 2.1 rejection is a real
+  RevenueCat/StoreKit misconfiguration (no Apple app added, no product attached), not a
+  review-environment issue. Unlocking the paywall avoids exercising the broken path rather than
+  fixing it. The direct fix (Section 4: add Apple app in RevenueCat, create the IAP in App Store
+  Connect, attach the product, drop in the `appl_...` key) is dashboard/console config with **no
+  waiting period** — do it in parallel with the Android free-launch track, don't treat it as
+  gated by the same 14-day clock.
+- **Why we're still shipping iOS free in v1.0 anyway**: brand/version parity (both platforms hit
+  v1.0 together) plus a deliberate GTM choice — launch free to build an install base and reviews,
+  monetize once there's traction, which is a standard freemium pattern. Since there are **no real
+  users yet**, there's no bait-and-switch cost to worry about when the paywall reappears in v1.1.
+  Re-evaluate this reasoning if real installs accumulate before v1.1 ships — gating previously-free
+  features out from under an existing user base is a known trigger for review-bombing/refund
+  requests, and at that point a grandfather clause for v1.0 installs should be considered.
+- **Apple's own accepted alternative** to a full unlock, for future reference: a demo/sandbox
+  account with an expired subscription noted in App Review Information. Doesn't apply here since
+  the backend is actually broken, but worth knowing for any *future* 2.1 rejection that isn't a
+  real config bug.
+
+### Implementation status
+
+- [x] **Phase 1 code change**: `LaunchFlags.FREE_LAUNCH_MODE` (shared, commonMain,
+      `subscription/LaunchFlags.kt`) added as the single toggle for the v1.0 free-launch strategy.
+      Wired into `SubscriptionManager.hasAccess()` below the debug `DevOverride` (so QA can still
+      use `FORCE_FREE` to test locked UX) and above billing state (so it grants access regardless
+      of RevenueCat/flag state). Unit-tested (`SubscriptionManagerTest`): grants every `FeatureGate`
+      in release with no billing manager and `isPremiumEnabled=false`; confirms debug `FORCE_FREE`
+      still blocks even when free-launch mode is on.
+- [x] **Follow-up fix — dangling paywall UI**: unlocking `hasAccess()` alone was **not** sufficient.
+      Two UI surfaces reference the raw `uiState.isPremiumEnabled` settings flag (always `false`
+      pre-purchase) or a hardcoded badge directly, independent of the gate:
+      - The Settings screen's "Upgrade to PayslipMax Premium" card/row
+        (`AccountSubscriptionSection`/`PremiumSection` in `SettingsSectionComponents.kt`) still
+        opened the upgrade sheet → "Unlock Premium Tier" → `launchPurchaseFlow()` → the exact same
+        broken RevenueCat/StoreKit call that got iOS rejected under 2.1 in the first place. Fixed by
+        hiding that card/row entirely behind `!LaunchFlags.FREE_LAUNCH_MODE`.
+      - The Backup & Restore settings row (`BackupRestoreSettingsCard.kt`) showed a hardcoded
+        "PREMIUM" badge regardless of actual access — contradicting its own "Configured" subtitle
+        once `canBackup` was true. Fixed to only show the badge when `!canBackup`.
+      - The Premium Features catalog screen (`PremiumFeaturesScreen.kt`) was left as-is: its
+        `rowMode()` already derives locked/unlocked state from `hasAccess()` per row, so with every
+        gate open it naturally renders everything as included/openable and never reaches the
+        upgrade sheet — no separate fix needed there.
+      - **Lesson for next time**: any UI element that gates on entitlement must key off
+        `SubscriptionManager.hasAccess()` (or a value that flows from it), never off the raw
+        `isPremiumEnabled` settings flag or a hardcoded badge — the latter two don't see
+        `LaunchFlags.FREE_LAUNCH_MODE` and will silently reintroduce a dead-end purchase flow.
+- [x] **Recovery note (2026-09-07, later same day)**: this Phase 1 work was accidentally discarded
+      from the working tree before being committed, then recovered from dangling git blobs and
+      re-committed (`542eb0c`). Also added an injectable `isFreeLaunchModeProvider` to
+      `PayslipViewModel` so pre-existing subscription/billing tests can pin launch-mode off to test
+      premium-flag/billing gating logic in isolation — see the 5 test fixes in that commit.
+- [ ] Flip `LaunchFlags.FREE_LAUNCH_MODE` to `false` once Section 4 (RevenueCat + StoreKit config,
+      both platforms) is complete and verified in TestFlight/internal testing, to re-enable the
+      real paywall for v1.1 — and re-check the two UI surfaces above still make sense once that
+      happens (the hidden card/row should simply reappear; no further code change expected).
+
+### Full audit — every purchase-sheet entry point, and why each is safe
+
+All 4 places in the app that can open the purchase sheet (`launchPurchaseFlow`) were checked. Every
+one resolves to `LaunchFlags.FREE_LAUNCH_MODE` as the single point of control — either directly, or
+transitively through `SubscriptionManager.hasAccess()`:
+
+| Screen | Trigger condition | Neutralized by |
+|---|---|---|
+| `SettingsSectionComponents.kt` (Upgrade card/row) | always visible pre-fix | direct: `if (!LaunchFlags.FREE_LAUNCH_MODE)` wrap |
+| `PremiumFeaturesScreen.kt` | row `mode == LOCKED` | indirect: `rowMode()` derives from `hasAccess(gate)` per row |
+| `InsightsScreen.kt` | `access.hasXxx == false` (`rememberInsightsFeatureAccess`) | indirect: wraps `hasAccess(gate)` per gate |
+| `RepresentationScreen.kt` | `!hasClaimGenerator` | indirect: `hasClaimGenerator = rememberHasAccess(FeatureGate.CLAIM_GENERATOR)` |
+
+Plus the Backup & Restore `PREMIUM` badge (`BackupRestoreSettingsCard.kt`), now `if (canBackup) null
+else AppStrings.premiumBadgeTag` — `canBackup` is itself `hasAccess`-derived.
+
+**Resurrection is one line.** Flip `FREE_LAUNCH_MODE` from `true` to `false` in `LaunchFlags.kt`:
+every gate re-locks via `hasAccess()`, and every hidden upgrade CTA reappears automatically. No other
+file needs to change.
+
+**Rule for any new gated UI added before v1.1**: it must read `hasAccess(gate)` (or a value derived
+from it) to decide whether to show a lock/upgrade CTA. Never gate on the raw `isPremiumEnabled`
+settings flag or a hardcoded badge/string — those don't see `LaunchFlags` and will silently
+reintroduce a dead-end purchase button during free launch.
+
+### Cosmetic follow-up — "Premium Features" copy
+
+Not a rejection risk (no purchase CTA left on that screen — see audit above), but "Premium
+Features" / "Everything included with PayslipMax Premium" reads oddly on a free app. Swapped to
+launch-neutral copy, same one-flag pattern as the rest of this plan:
+
+- `AppStringsPremium.kt` — added `premiumCatalogTitleDisplay`, `premiumCatalogSubtitleDisplay`,
+  `premiumCatalogSettingsEntrySubtitleDisplay` (computed `val`s, not `const val`, since they branch
+  on `LaunchFlags.FREE_LAUNCH_MODE` at read time). `true` → "Everything Included" / "All features
+  are unlocked for launch" / "See everything included". `false` → the original
+  "Premium Features" / "Everything included with PayslipMax Premium" / "See everything Premium
+  unlocks" strings, untouched.
+- The 2 Settings entry points (`AccountSubscriptionSection`/`PremiumSection` in
+  `SettingsSectionComponents.kt`) were switched to the `*Display` variants.
+- `PremiumFeaturesScreen.kt`'s own header still reads the static `premiumCatalogTitle`/
+  `premiumCatalogSubtitle` (i.e. "Premium Features" / "Everything included with PayslipMax
+  Premium") — **not yet swapped to the `*Display` variants**. Low priority (same non-rejection-risk
+  reasoning as above), but worth doing before wide release for copy consistency.
+- Reverts automatically with the same `FREE_LAUNCH_MODE` flip — no separate copy change needed for
+  v1.1.
+
+---
+
 ## 1. Executive Summary & Current State
 
 ### Android (Google Play Console)
@@ -97,16 +217,21 @@ The most reliable, industry-proven path forward is **Deferred Monetization (Laun
 Use this interactive checklist to track progress step-by-step.
 
 ### Step 1: Unblock iOS App Store (v1.0 Re-submission)
-- [ ] **1.1** Temporarily bypass paywall gate in code (set `SubscriptionState.isSubscribed = true` / unlock premium features by default for v1.0).
-- [ ] **1.2** Verify on physical iPhone: App launches, payslip imports, and all features (DSOP, Tax Planner, Anomaly Detection) are fully interactive with no error popups.
-- [ ] **1.3** Record 1–2 minute screen recording on physical iPhone showcasing the complete working flow.
-- [ ] **1.4** Upload video (Google Drive / unlisted YouTube) and reply to Apple in App Store Connect Resolution Center.
-- [ ] **1.5** Bump iOS build version to `1.0.0 (3)` and submit new build for review.
-- [ ] **1.6** Receive Apple App Store Approval.
+- [x] **1.1** Temporarily bypass paywall gate in code — implemented as `LaunchFlags.FREE_LAUNCH_MODE`
+      (see Section 0), not a `SubscriptionState.isSubscribed` field (that field doesn't exist;
+      `SubscriptionState` is a sealed class of `Active`/`Inactive`/`Unknown`).
+- [x] **1.2** Verify on physical iPhone: App launches, payslip imports, and all features (DSOP, Tax Planner, Anomaly Detection) are fully interactive with no error popups.
+- [x] **1.3** Record 1–2 minute screen recording on physical iPhone showcasing the complete working flow — https://youtube.com/shorts/_5M3oamzRWA?si=JZ8v4dswY8Y528NO.
+- [x] **1.4** Upload video and reply to Apple in App Store Connect Resolution Center — demo video + App Review Information note included with the resubmission.
+- [x] **1.5** Bump iOS build version to `1.0.0 (3)` and submit new build for review — submitted 2026-09-07, 12:03 PM. Submission ID `39485df1-9bdf-42a2-9286-2e33f0311fd1`.
+- [ ] **1.6** Receive Apple App Store Approval — **status: Waiting for Review** since 2026-09-07, 12:03 PM. Watch for the approval/rejection email.
 
 ### Step 2: Unblock Android Closed Testing (v1.0 Production Release)
-- [ ] **2.1** Deploy the v1.0 free unlocked build to Google Play Closed Testing track.
-- [ ] **2.2** Maintain 20 active opted-in testers for the 14-day mandatory period.
+- [ ] **2.1** Deploy the v1.0 free unlocked build to Google Play Closed Testing track — release AAB
+      built locally (`composeApp-release.aab`, `versionCode 7`, `FREE_LAUNCH_MODE=true`, real Gemma
+      model packaged per Section 7) but **not yet uploaded** to Play Console.
+- [ ] **2.2** Maintain **12** active opted-in testers for the 14-day mandatory period (reduced from
+      20 by Google on 2024-12-11 — see Section 0). Not started.
 - [ ] **2.3** Apply for Production access as a Free application upon completion of Day 14.
 - [ ] **2.4** Google Play Production Approval & Public Release.
 
@@ -124,3 +249,46 @@ Use this interactive checklist to track progress step-by-step.
 - [ ] **4.5** In RevenueCat Dashboard > **Product Catalog**, attach Apple and Google product IDs to `premium` entitlement and `yearly` package.
 - [ ] **4.6** Update [`RevenueCatApiKey.ios.kt`](file:///Users/sunil/Downloads/PayslipMAX%20KMP/shared/src/iosMain/kotlin/com/payslipmax/pdfparser/billing/RevenueCatApiKey.ios.kt) with the newly generated `appl_...` key.
 - [ ] **4.7** Re-enable paywall gating and release v1.1 with monetization active across both platforms.
+
+---
+
+## 7. Gemma Model Asset Pack — Release Build Procedure
+
+Any `bundleRelease` destined for a real Play Console track (closed testing or production) must package
+the **real** Tier 6 offline Gemma fallback model, not a placeholder. This is not automatic — it depends
+on how `:composeApp:bundleRelease` is invoked, which is why the model has sometimes been included and
+sometimes not.
+
+### How the gate works (`gemmaModelPack/build.gradle.kts`)
+
+The `fetchGemmaModelForRelease` task runs before bundling and resolves the model source from, in order:
+`-PgemmaModelSourcePath=<path>` or the `GEMMA_MODEL_SOURCE_PATH` environment variable. Behavior:
+
+- **Neither provided**: the build **fails hard** with an explicit error telling you what to pass.
+- **`-PallowPlaceholderGemmaModel=true`** (no source path): packages a fake text file instead of the
+  real `.litertlm` model, with a loud `⚠️ WARNING` in the build log. This exists **only** so developers
+  can build/test unrelated features locally without needing the 580MB model on disk — a build made this
+  way ships Tier 6 completely non-functional.
+- **A real source path provided**: the file's SHA-256 is checked against a pinned hash
+  (`gemmaModelPack/build.gradle.kts`) before it's copied into the asset pack — this rejects a
+  corrupted or wrong-version model rather than silently shipping it.
+
+The model file itself is gitignored (`gemmaModelPack/src/main/assets/*.litertlm`) and never committed —
+each machine building a release needs its own local copy of the verified model.
+
+### Correct procedure for any Play Console upload
+
+```bash
+./gradlew :composeApp:bundleRelease -PgemmaModelSourcePath="/path/to/gemma3-1b-it-int4.litertlm"
+```
+
+or via environment variable:
+
+```bash
+export GEMMA_MODEL_SOURCE_PATH="/path/to/gemma3-1b-it-int4.litertlm"
+./gradlew :composeApp:bundleRelease
+```
+
+**Never** pass `-PallowPlaceholderGemmaModel=true` for a build going to Play Console, at any track —
+that ships a broken offline-AI fallback to real testers/users. Placeholder builds are for local
+development only and must never leave the developer's machine.

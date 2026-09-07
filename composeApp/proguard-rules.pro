@@ -43,7 +43,6 @@
 -dontwarn com.google.ai.edge.litert.**
 
 # 7. Compose Runtime & Activity
--keep class androidx.compose.ui.platform.** { *; }
 -dontwarn androidx.compose.ui.platform.**
 
 # 8. Optional Transitive Dependencies (PdfBox, Play Core, SLF4J)

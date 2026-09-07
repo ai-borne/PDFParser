@@ -15,7 +15,7 @@
     @kotlinx.serialization.SerialName <fields>;
     @kotlinx.serialization.Serializable <fields>;
 }
--keepclassmembers class * {
+-keepclassmembers @kotlinx.serialization.Serializable class * {
     *** Companion;
 }
 -keepclasseswithmembers class * {

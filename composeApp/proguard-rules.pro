@@ -23,12 +23,6 @@
 }
 
 # 3. Room Database & SQLite
--keep class * extends androidx.room.RoomDatabase
--keep @androidx.room.Entity class *
--keepclassmembers class * {
-    @androidx.room.* <fields>;
-    @androidx.room.* <methods>;
-}
 -dontwarn androidx.room.paging.**
 
 # 4. Ktor Client & Networking

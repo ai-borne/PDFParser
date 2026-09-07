@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.payslipmax.pdfparser.Screen
+import com.payslipmax.pdfparser.subscription.LaunchFlags
 import com.payslipmax.pdfparser.ui.*
 import com.payslipmax.pdfparser.ui.theme.AppDimensions
 import com.payslipmax.pdfparser.ui.theme.AppStrings
@@ -34,17 +35,19 @@ fun AccountSubscriptionSection(
             profileCda = uiState.profileCdaNumber,
             profilePan = uiState.profilePanNumber,
         )
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-        PremiumSettingsCardContentRow(
-            isPremiumEnabled = uiState.isPremiumEnabled,
-            onUpgradePrompt = onUpgradePrompt,
-            price = premiumPrice,
-        )
+        if (!LaunchFlags.FREE_LAUNCH_MODE) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            PremiumSettingsCardContentRow(
+                isPremiumEnabled = uiState.isPremiumEnabled,
+                onUpgradePrompt = onUpgradePrompt,
+                price = premiumPrice,
+            )
+        }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         SettingsRow(
             icon = "✨",
-            title = AppStringsPremium.premiumCatalogTitle,
-            subtitle = AppStringsPremium.premiumCatalogSettingsEntrySubtitle,
+            title = AppStringsPremium.premiumCatalogTitleDisplay,
+            subtitle = AppStringsPremium.premiumCatalogSettingsEntrySubtitleDisplay,
             onClick = { onNavigateTo(Screen.PremiumFeatures) },
         )
     }
@@ -74,16 +77,18 @@ fun PremiumSection(
 ) {
     val premiumPrice by viewModel.premiumPriceState.collectAsState()
 
-    PremiumSettingsCard(
-        isPremiumEnabled = uiState.isPremiumEnabled,
-        onUpgradePrompt = onUpgradePrompt,
-        price = premiumPrice,
-    )
+    if (!LaunchFlags.FREE_LAUNCH_MODE) {
+        PremiumSettingsCard(
+            isPremiumEnabled = uiState.isPremiumEnabled,
+            onUpgradePrompt = onUpgradePrompt,
+            price = premiumPrice,
+        )
+    }
     SettingsCategoryCard {
         SettingsRow(
             icon = "✨",
-            title = AppStringsPremium.premiumCatalogTitle,
-            subtitle = AppStringsPremium.premiumCatalogSettingsEntrySubtitle,
+            title = AppStringsPremium.premiumCatalogTitleDisplay,
+            subtitle = AppStringsPremium.premiumCatalogSettingsEntrySubtitleDisplay,
             onClick = { onNavigateTo(Screen.PremiumFeatures) },
         )
     }

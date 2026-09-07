@@ -1,5 +1,7 @@
 package com.payslipmax.pdfparser.ui.theme
 
+import com.payslipmax.pdfparser.subscription.LaunchFlags
+
 object AppStringsPremium {
     // Premium Features Screens Strings
     const val representationTitle = "Claim Generator"
@@ -148,6 +150,25 @@ object AppStringsPremium {
     const val premiumCatalogIncludedLabel = "Included"
     const val premiumCatalogComingSoonLabel = "Coming soon"
     const val premiumCatalogSettingsEntrySubtitle = "See everything Premium unlocks"
+
+    // v1.0 free-launch copy (see docs/Launch/05_launch_strategy_and_resolution.md). Swaps out any
+    // mention of a paid tier while LaunchFlags.FREE_LAUNCH_MODE is on; reverts to the strings above
+    // automatically once it's flipped off for v1.1 — no call site needs to change.
+    private const val launchNeutralCatalogTitle = "Everything Included"
+    private const val launchNeutralCatalogSubtitle = "All features are unlocked for launch"
+    private const val launchNeutralCatalogSettingsEntrySubtitle = "See everything included"
+
+    val premiumCatalogTitleDisplay: String
+        get() = if (LaunchFlags.FREE_LAUNCH_MODE) launchNeutralCatalogTitle else premiumCatalogTitle
+    val premiumCatalogSubtitleDisplay: String
+        get() = if (LaunchFlags.FREE_LAUNCH_MODE) launchNeutralCatalogSubtitle else premiumCatalogSubtitle
+    val premiumCatalogSettingsEntrySubtitleDisplay: String
+        get() =
+            if (LaunchFlags.FREE_LAUNCH_MODE) {
+                launchNeutralCatalogSettingsEntrySubtitle
+            } else {
+                premiumCatalogSettingsEntrySubtitle
+            }
 
     const val premiumCatalogPremiumIntelligenceTitle = "Premium Intelligence"
     const val premiumCatalogPremiumIntelligenceDesc = "Full recovery opportunities, tax savings and CA-level audit in one view"

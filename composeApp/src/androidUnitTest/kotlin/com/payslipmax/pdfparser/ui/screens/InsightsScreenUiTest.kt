@@ -62,7 +62,7 @@ class InsightsScreenUiTest {
         fakeDao = FakePayslipDao()
         fakeParser = FakePdfParser()
         repository = PayslipRepository(fakeDao, fakeParser, Dispatchers.Unconfined)
-        viewModel = PayslipViewModel(repository)
+        viewModel = PayslipViewModel(repository, isFreeLaunchModeProvider = { false })
         // Debug builds default the entitlement override to FORCE_PRO; drive the real flag path so
         // these tests exercise production free-vs-premium gating rather than the dev bypass.
         viewModel.setDevOverride(DevOverride.FOLLOW_FLAG)

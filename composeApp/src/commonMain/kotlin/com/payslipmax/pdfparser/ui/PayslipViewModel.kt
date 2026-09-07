@@ -27,6 +27,7 @@ class PayslipViewModel(
     internal val gemmaInstallTelemetry: GemmaInstallTelemetry = provideGemmaInstallTelemetry(),
     internal val appIntegrityChecker: com.payslipmax.pdfparser.domain.AppIntegrityChecker = com.payslipmax.pdfparser.domain.provideAppIntegrityChecker(),
     internal val billingManager: com.payslipmax.pdfparser.billing.BillingManager = com.payslipmax.pdfparser.billing.provideBillingManager(),
+    internal val isFreeLaunchModeProvider: () -> Boolean = { com.payslipmax.pdfparser.subscription.LaunchFlags.FREE_LAUNCH_MODE },
 ) : ViewModel() {
     internal val _uiState = MutableStateFlow(PayslipUiState())
     val uiState: StateFlow<PayslipUiState> = _uiState.asStateFlow()
@@ -38,6 +39,7 @@ class PayslipViewModel(
         com.payslipmax.pdfparser.subscription.SubscriptionManager(
             isPremiumEnabledProvider = { _uiState.value.isPremiumEnabled },
             billingManager = billingManager,
+            isFreeLaunchModeProvider = isFreeLaunchModeProvider,
         )
 
     val ledgerRecords: StateFlow<List<com.payslipmax.pdfparser.database.LedgerRecordEntity>> =

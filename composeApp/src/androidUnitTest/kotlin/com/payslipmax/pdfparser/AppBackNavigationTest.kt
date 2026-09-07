@@ -206,7 +206,7 @@ class AppBackNavigationTest {
 
         composeRule.onAllNodesWithText(AppStrings.navigationSettings).onFirst().performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText(AppStringsPremium.premiumCatalogTitle).performScrollTo().performClick()
+        composeRule.onNodeWithText(AppStringsPremium.premiumCatalogTitleDisplay).performScrollTo().performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText(AppStringsPremium.premiumToolsTaxPlanner).performScrollTo().performClick()
         composeRule.waitForIdle()

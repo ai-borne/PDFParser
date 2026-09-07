@@ -108,6 +108,7 @@ class SubscriptionLifecycleSyncTest {
                 PayslipViewModel(
                     repository = repository,
                     billingManager = fakeBillingManager,
+                    isFreeLaunchModeProvider = { false },
                 )
             viewModel.subscriptionManager.setDevOverride(DevOverride.FOLLOW_FLAG)
 
@@ -130,6 +131,7 @@ class SubscriptionLifecycleSyncTest {
                 isPremiumEnabledProvider = { true },
                 isDebugBuildProvider = { false },
                 billingManager = fakeBillingManager,
+                isFreeLaunchModeProvider = { false },
             )
 
         assertFalse(
@@ -146,6 +148,7 @@ class SubscriptionLifecycleSyncTest {
                 isPremiumEnabledProvider = { true },
                 isDebugBuildProvider = { false },
                 billingManager = fakeBillingManager,
+                isFreeLaunchModeProvider = { false },
             )
 
         assertTrue(

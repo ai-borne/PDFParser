@@ -19,6 +19,7 @@ class SubscriptionManagerBillingTest {
                     isPremiumEnabledProvider = { false },
                     isDebugBuildProvider = { false },
                     billingManager = fakeBillingManager,
+                    isFreeLaunchModeProvider = { false },
                 )
 
             assertFalse(subscriptionManager.hasAccess(FeatureGate.PREMIUM_INTELLIGENCE))
@@ -40,6 +41,7 @@ class SubscriptionManagerBillingTest {
                     isPremiumEnabledProvider = { false },
                     isDebugBuildProvider = { true },
                     billingManager = fakeBillingManager,
+                    isFreeLaunchModeProvider = { false },
                 )
 
             // Default in debug is FORCE_PRO
@@ -63,6 +65,7 @@ class SubscriptionManagerBillingTest {
                     isPremiumEnabledProvider = { false },
                     isDebugBuildProvider = { false },
                     billingManager = fakeBillingManager,
+                    isFreeLaunchModeProvider = { false },
                 )
 
             assertFalse(subscriptionManager.hasAccess(FeatureGate.BACKUP_RESTORE))

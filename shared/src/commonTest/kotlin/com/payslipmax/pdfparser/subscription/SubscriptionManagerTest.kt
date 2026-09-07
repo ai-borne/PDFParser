@@ -7,10 +7,18 @@ import kotlin.test.assertTrue
 
 class SubscriptionManagerTest {
     private fun debugManager(premium: () -> Boolean) =
-        SubscriptionManager(isPremiumEnabledProvider = premium, isDebugBuildProvider = { true })
+        SubscriptionManager(
+            isPremiumEnabledProvider = premium,
+            isDebugBuildProvider = { true },
+            isFreeLaunchModeProvider = { false },
+        )
 
     private fun releaseManager(premium: () -> Boolean) =
-        SubscriptionManager(isPremiumEnabledProvider = premium, isDebugBuildProvider = { false })
+        SubscriptionManager(
+            isPremiumEnabledProvider = premium,
+            isDebugBuildProvider = { false },
+            isFreeLaunchModeProvider = { false },
+        )
 
     @Test
     fun testDefaultOverrideIsForceProInDebug() {
@@ -78,6 +86,34 @@ class SubscriptionManagerTest {
         val manager = releaseManager { true }
         for (gate in FeatureGate.values()) {
             assertTrue(manager.hasAccess(gate))
+        }
+    }
+
+    @Test
+    fun testFreeLaunchModeGrantsEveryGateInReleaseRegardlessOfFlagOrBilling() {
+        val manager =
+            SubscriptionManager(
+                isPremiumEnabledProvider = { false },
+                isDebugBuildProvider = { false },
+                billingManager = null,
+                isFreeLaunchModeProvider = { true },
+            )
+        for (gate in FeatureGate.values()) {
+            assertTrue(manager.hasAccess(gate), "free launch mode must grant $gate even with no billing/flag")
+        }
+    }
+
+    @Test
+    fun testDebugForceFreeStillBlocksEvenWhenFreeLaunchModeIsOn() {
+        val manager =
+            SubscriptionManager(
+                isPremiumEnabledProvider = { false },
+                isDebugBuildProvider = { true },
+                isFreeLaunchModeProvider = { true },
+            )
+        manager.setDevOverride(DevOverride.FORCE_FREE)
+        for (gate in FeatureGate.values()) {
+            assertFalse(manager.hasAccess(gate), "FORCE_FREE must still block $gate so QA can test locked UX during free launch")
         }
     }
 }

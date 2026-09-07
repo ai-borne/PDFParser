@@ -26,7 +26,6 @@
 -dontwarn androidx.room.paging.**
 
 # 4. Ktor Client & Networking
--keep class io.ktor.** { *; }
 -dontwarn io.ktor.**
 
 # 5. Koin Dependency Injection

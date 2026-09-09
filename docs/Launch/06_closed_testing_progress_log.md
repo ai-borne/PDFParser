@@ -5,17 +5,52 @@ Running record of what changed in each Play Console closed-testing release, kept
 app should be approved for production) can cite concrete, dated evidence instead of being
 reconstructed from memory. Update this file at every release bump — don't batch it at the end.
 
-## Status snapshot (as of 2026-09-09)
+## Status snapshot (as of 2026-09-09, post-upload, symbolication-verified)
 
 - **Track:** Closed testing (Alpha), 177 countries/regions.
-- **Live release:** `7 (1.0.0)` — versionCode 7, approved and available to selected testers since
-  2026-09-09 10:13.
+- **Live release:** `8 (1.0.0)` — versionCode 8, published via full rollout on 2026-09-09 20:12
+  (Play Console Submission ID 6, submitted 19:49, published 20:12). Release name in Console:
+  "8 (1.0.0) - R8 keep-rule hardening".
 - **Testers:** 25/25 opted in (third-party tester panel, "Private Testing Pro" plan). Mandatory
-  period tracker shows Day 2 of 16.
-- **Reports:** 0/3 ready.
-- **Next upload:** `8 (1.0.0)` — versionCode 8, AAB built locally with the R8 keep-rule cleanup
-  (Phase 2–8, see below) and `FREE_LAUNCH_MODE=true`. Built but **not yet uploaded** to Play
-  Console as of this entry.
+  period tracker showed Day 2 of 16 as of the v8 upload.
+- **Reports:** 0/3 ready as of the v8 upload.
+- **Pre-upload verification done:** before uploading, the exact `composeApp-release.aab` was
+  validated with `bundletool` (manifest dump confirmed versionCode 8 / versionName 1.0.0 /
+  targetSdk 36, structural `validate` passed clean) and jarsigner-verified against the release
+  keystore. It was then smoke-tested end-to-end by sideloading the built APK splits (installer
+  spoofed to `com.android.vending` to pass `AppIntegrityChecker`) on both the Android emulator and
+  a physical Pixel 9 — Dashboard/History/Insights/Settings all navigated cleanly, Crashlytics
+  initialized, `FREE_LAUNCH_MODE` confirmed live ("Everything Included", no paywall), and no
+  `FATAL EXCEPTION`/`ClassNotFoundException`/`NoSuchMethodError` appeared in logcat on either
+  device — direct evidence the R8 Phase 2–8 keep-rule removals didn't break Koin/Room/Compose at
+  runtime. The Pixel 9 was returned to its real Play-delivered v7 install afterward (uninstalled
+  the sideload; reinstalled from Play Store) so the tester enrollment on that device stayed clean.
+- **Play Console's own bundle diff (v8 vs v7), confirmed post-upload:** DEX size 14.7 MB → 12.8 MB
+  (‑13%), download size 22.6 MB → 22 MB, optimisation 46% → 53%, obfuscation 47% → 54%, shrinking
+  46% → 53%, and "Resource shrinking optimised" newly present in the R8 config — concrete
+  confirmation the keep-rule cleanup had the intended effect. Permission list (12 permissions)
+  verified identical to v7 — zero permission-surface drift from this release.
+- **Crashlytics symbolication verified on v8, 2026-09-09 22:20:** the Phase 7 Companion-object
+  keep-rule rescoping (`847edb1`) was the one v8 change with a real risk of silently breaking
+  crash-report readability without breaking the app itself, so it hadn't been checked as part of
+  the pre-upload smoke test. Verified directly on the physical Pixel 9 (same device as the
+  pre-upload smoke test, running the live Play-delivered `1.0.0 (8)` build): unlocked the hidden
+  Developer Sandbox (Settings header tapped 7×) and fired the built-in
+  "Background Thread Crash (IO/Default)" trigger (`TestCrash.android.kt`,
+  `triggerBackgroundTestCrash()`, added in `8248dfc`) via ADB. The resulting Crashlytics issue
+  shows a fully readable stack trace —
+  `com.payslipmax.pdfparser.telemetry.TestCrash_androidKt$triggerBackgroundTestCrash$1.invokeSuspend
+  (TestCrash.android.kt:13)` — real package, class, file, and line number, not obfuscated
+  (`a.b.c`-style) garbage. **Conclusion: v8's R8 keep-rule changes do not break Crashlytics
+  symbolication; crash reports on this build can be trusted as-is.**
+- **One unrelated Crashlytics issue explained, not a real crash:** a single
+  `RemoteServiceException$CrashedByAdbException` ("shell-induced crash") appeared on v8 at
+  2026-09-09 18:53:28, ~1 hour before the Play Console submission (19:49). This is not a real user
+  crash — it's the expected side effect of the pre-upload sideload/uninstall/reinstall smoke-test
+  sequence documented above (installing the split APKs then uninstalling and reinstalling the
+  Play-delivered version via ADB), which Android's `ActivityThread` reports as this exact exception
+  when a bound background service is disrupted mid-command. Muted/closed in Crashlytics so it
+  doesn't skew the 14-day crash-free metrics or the final submission report.
 
 ## Release history and what each build actually changed
 
@@ -58,7 +93,7 @@ directly addresses the "incomplete app" rejection class from Apple/Google review
 [05_launch_strategy_and_resolution.md](05_launch_strategy_and_resolution.md) Section 0 for the full
 rationale and the iOS resubmission this same flag unblocked.
 
-### versionCode 8 — built 2026-09-07, **not yet uploaded** to Play Console
+### versionCode 8 — built 2026-09-07, published to Closed Testing 2026-09-09 20:12
 Commits `7497732` → `556fa9a` (R8 Phases 2–8) plus `ef9c3c2` (resource shrinking + proguard rule
 dedup + CI verification) and `eb38acd` (fixed a typo in the litert/Gemma keep rule that would have
 broken the on-device model at runtime under R8), finishing with `48d2fe6` (the versionCode 8 bump
@@ -72,18 +107,23 @@ automatically instead of only at release time. One real regression (`eb38acd`, t
 typo) was caught and fixed during this hardening pass before it could ship — worth calling out
 explicitly in the final report as evidence of the testing rigor, not just as a fixed bug.
 
-**Outstanding action:** upload the `composeApp-release.aab` (versionCode 8) to the Closed Testing
-- Alpha track in Play Console. This has not happened yet as of this log entry.
+**Status:** uploaded and published. See the status snapshot above for pre-upload verification
+detail and the Play Console bundle-diff numbers confirming the shrink actually worked.
 
 ## What still needs to happen before the Day-14 final submission
 
-1. Upload versionCode 8 AAB to Closed Testing.
+1. ~~Upload versionCode 8 AAB to Closed Testing.~~ Done 2026-09-09.
 2. Keep 12+ testers active through the full 14-day mandatory window (Play Console currently shows
    25/25 opted in via the third-party panel, but Google's own 14-day counter is what governs
-   production eligibility — confirm which counter is authoritative before submission).
+   production eligibility — confirm which counter is authoritative before submission). Note that
+   pushing versionCode 8 mid-window is expected/normal — the mandatory-testing clock is track-based,
+   not tied to a single release version — but reconfirm this in Play Console's own "Testing" tab
+   rather than assuming it.
 3. Once Day 14 completes, collect the 3 pending crash/ANR reports referenced above (currently 0/3
    ready) — the final submission report should either show these as clean or document what was
    fixed in response to them.
-4. Draft the final "why this app should be published" report citing this file's dated release
+4. ~~Do a real-crash Crashlytics symbolication check on this specific build.~~ Done 2026-09-09,
+   22:20 — verified clean/readable. See status snapshot above.
+5. Draft the final "why this app should be published" report citing this file's dated release
    history as evidence of iterative fixing (crash reporting → bug fixes → completeness fix →
    binary hardening), rather than reconstructing the narrative from git log at the last minute.

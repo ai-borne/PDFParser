@@ -224,14 +224,19 @@ Use this interactive checklist to track progress step-by-step.
 - [x] **1.3** Record 1–2 minute screen recording on physical iPhone showcasing the complete working flow — https://youtube.com/shorts/_5M3oamzRWA?si=JZ8v4dswY8Y528NO.
 - [x] **1.4** Upload video and reply to Apple in App Store Connect Resolution Center — demo video + App Review Information note included with the resubmission.
 - [x] **1.5** Bump iOS build version to `1.0.0 (3)` and submit new build for review — submitted 2026-09-07, 12:03 PM. Submission ID `39485df1-9bdf-42a2-9286-2e33f0311fd1`.
-- [ ] **1.6** Receive Apple App Store Approval — **status: Waiting for Review** since 2026-09-07, 12:03 PM. Watch for the approval/rejection email.
+- [x] **1.6** Receive Apple App Store Approval — **Approved**. App Store Connect shows "iOS App 1.0"
+      (1.0.0 (3)) as Review Completed / Approved as of 2026-09-09. Publish timing to the public App
+      Store is a separate decision from approval itself.
 
 ### Step 2: Unblock Android Closed Testing (v1.0 Production Release)
-- [ ] **2.1** Deploy the v1.0 free unlocked build to Google Play Closed Testing track — release AAB
-      built locally (`composeApp-release.aab`, `versionCode 7`, `FREE_LAUNCH_MODE=true`, real Gemma
-      model packaged per Section 7) but **not yet uploaded** to Play Console.
+- [x] **2.1** Deploy the v1.0 free unlocked build to Google Play Closed Testing track — released
+      through versionCode 7 (2026-09-09, 10:13) and versionCode 8 with R8 keep-rule hardening
+      (2026-09-09, 20:12; full detail in
+      [06_closed_testing_progress_log.md](06_closed_testing_progress_log.md)).
 - [ ] **2.2** Maintain **12** active opted-in testers for the 14-day mandatory period (reduced from
-      20 by Google on 2024-12-11 — see Section 0). Not started.
+      20 by Google on 2024-12-11 — see Section 0). 25/25 opted in via third-party tester panel as of
+      the v8 upload; confirm Google's own Play Console day-count (Dashboard / Publishing overview)
+      is the authoritative tracker before assuming Day-14 timing.
 - [ ] **2.3** Apply for Production access as a Free application upon completion of Day 14.
 - [ ] **2.4** Google Play Production Approval & Public Release.
 

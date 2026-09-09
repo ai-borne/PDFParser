@@ -227,6 +227,31 @@ Use this interactive checklist to track progress step-by-step.
 - [x] **1.6** Receive Apple App Store Approval — **Approved**. App Store Connect shows "iOS App 1.0"
       (1.0.0 (3)) as Review Completed / Approved as of 2026-09-09. Publish timing to the public App
       Store is a separate decision from approval itself.
+- [ ] **1.7** Release the approved build to the public App Store now, without waiting on Android's
+      14-day closed-testing clock or on Step 4/Step 5 (RevenueCat, Gemma-on-iOS) — see the 2026-09-09
+      recommendation below. Nothing regresses by releasing now: Tier 6 Gemma fallback is already
+      non-functional on iOS today, and the paywall is already bypassed via `FREE_LAUNCH_MODE`, so a
+      v1.1 update later doesn't require holding v1.0 back. Steps to verify/click before release:
+  - [ ] Confirm App Store Connect "Version Release" setting for 1.0.0 (3) — set to **manual release**
+        (not automatic-on-approval, not scheduled) so the release moment is deliberate.
+  - [ ] Re-check App Review Information / Resolution Center thread shows no open follow-up questions
+        from the reviewer post-approval.
+  - [ ] Confirm Age Rating, screenshots, and App Privacy "nutrition label" answers in App Store
+        Connect still match the shipped build (no drift since the 1.0.0 (2) rejection cycle).
+  - [ ] Confirm the production RevenueCat/StoreKit non-config (Section 4 "Missing Components") is
+        expected and accepted for v1.0 — i.e. no purchase surface is reachable, per the Section 0
+        audit table, so shipping without Apple IAP configured is intentional, not an oversight.
+  - [ ] Click **"Release This Version"** in App Store Connect.
+  - [ ] Post-release: verify the public App Store listing (`apps.apple.com`) resolves and shows
+        1.0.0 (3) within Apple's usual propagation window (~a few hours).
+  - [ ] Once live, capture the public App Store URL for future cross-linking (marketing, README,
+        BillDesk-style external verification if ever needed on iOS).
+
+**Recommendation (2026-09-09):** release iOS v1.0 now rather than gating it on Step 4 (RevenueCat)
+or Step 5 (Gemma-on-iOS) below. Both of those are real, untested, multi-step work (new Xcode target,
+App Group entitlements, R2-hosted model file, App Store Connect subscription config) with no fixed
+timeline, and gating an *already-approved* build on them just re-creates the kind of deadlock this
+whole document exists to avoid. Track Step 4 and Step 5 as the two v1.1 workstreams instead.
 
 ### Step 2: Unblock Android Closed Testing (v1.0 Production Release)
 - [x] **2.1** Deploy the v1.0 free unlocked build to Google Play Closed Testing track — released
@@ -254,6 +279,54 @@ Use this interactive checklist to track progress step-by-step.
 - [ ] **4.5** In RevenueCat Dashboard > **Product Catalog**, attach Apple and Google product IDs to `premium` entitlement and `yearly` package.
 - [ ] **4.6** Update [`RevenueCatApiKey.ios.kt`](file:///Users/sunil/Downloads/PayslipMAX%20KMP/shared/src/iosMain/kotlin/com/payslipmax/pdfparser/billing/RevenueCatApiKey.ios.kt) with the newly generated `appl_...` key.
 - [ ] **4.7** Re-enable paywall gating and release v1.1 with monetization active across both platforms.
+
+### Step 5: Wire Up Gemma-on-iOS via Background Assets (v1.1 Preparation)
+
+Android already ships the real Tier 6 offline Gemma fallback via a Gradle-driven Play Asset Delivery
+step (Section 7). iOS has the Kotlin/Swift scaffolding in place
+(`GemmaBaseModelInstaller.ios.kt`, `GemmaModelPaths.ios.kt`, `GemmaBackgroundAssetsBridge.swift`,
+`GemmaEngine.ios.kt`) but the actual download mechanism — Apple's **Background Assets** framework —
+was left unfinished pending Apple Developer Program enrollment (per code comments in
+`GemmaBaseModelInstaller.ios.kt`). That enrollment is no longer a blocker as of the v1.0 approval, so
+this is unblocked but not yet scheduled. Until it's done, iOS ships with Tier 6 silently
+non-functional (unlike Android's loud placeholder warning) — everything else (Tiers 1–5, 7) is
+unaffected since Gemma is a standby fallback, not required for normal parsing.
+
+Unlike Android (the app itself triggers the asset fetch via `requestFetch()`), Background Assets is
+OS-scheduled and autonomous — it decides when to download based on device state (Wi-Fi, charging,
+etc.), not the app.
+
+- [ ] **5.1** Host the `.litertlm` model file in Cloudflare R2 behind a stable, versioned HTTPS URL
+      (a public R2 bucket URL or an R2-backed Worker route). Apple's Background Assets framework just
+      needs a plain downloadable HTTPS URL — no special protocol — but the URL must stay stable across
+      app versions since it's referenced from the shipped manifest.
+- [ ] **5.2** Author the Background Assets **manifest** (asset ID, download URL, expected size,
+      checksum) and bundle it into the app binary — this is small metadata shipped at build time, not
+      the model itself.
+- [ ] **5.3** Create the **Background Assets extension target** in `iosApp/iosApp.xcodeproj` (Xcode-only
+      work — cannot be done headlessly; needs a developer at the keyboard).
+- [ ] **5.4** Add the **App Group entitlement** shared between the main app and the extension so both
+      can read/write the downloaded model from the same container (`GemmaModelPaths.ios.kt` already
+      resolves the expected path inside this App Group container).
+- [ ] **5.5** Configure the required `Info.plist` keys for the Background Assets extension (asset pack
+      identifiers, download domain allowlist if applicable).
+- [ ] **5.6** Wire `GemmaBackgroundAssetsBridge.swift` end-to-end: confirm it correctly forwards
+      progress/completion `NotificationCenter` events into the Kotlin
+      `IosGemmaBaseModelInstaller.companion` closures (bridge code already exists; verify against the
+      real extension rather than assuming the stub wiring is correct).
+- [ ] **5.7** Pin/verify the model file's checksum on the iOS side, matching Android's SHA-256 pinning
+      pattern (Section 7) — reject a corrupted/wrong-version download rather than silently loading it.
+- [ ] **5.8** Device-test the full flow on a physical iPhone: fresh install → wait for OS-scheduled
+      download (Wi-Fi + charging) → confirm `GemmaEngine.ios.kt` loads the model from the resolved
+      path → confirm a Tier 6 fallback case (a document that needs it) actually produces output.
+      Also test the "not yet downloaded" fallback path to confirm the app degrades gracefully (Tiers
+      1–5/7 only) rather than erroring.
+- [ ] **5.9** Document the release procedure here (mirroring Section 7's Android procedure) once
+      finalized, so future iOS release builds have the same "what must be true before shipping" gate
+      Android already has.
+
+Ship Step 5 alongside Step 4 in the same v1.1 release — both are deferred-from-v1.0 workstreams with
+no interdependency between them, so they can be built in parallel.
 
 ---
 

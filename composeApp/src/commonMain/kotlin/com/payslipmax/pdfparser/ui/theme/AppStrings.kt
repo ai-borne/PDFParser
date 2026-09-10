@@ -25,7 +25,9 @@ object AppStrings {
 
     // Explorer
     const val explorerHeader = "Payslip Digital Replica"
-    const val explorerSubheader = "Tap any transaction code for detailed explanations"
+    const val explorerSubheader = "Tap a code for details · Edit to fix a wrong value"
+    const val replicaEditLabel = "Edit"
+    const val replicaCancelLabel = "Cancel"
     const val replicaEarningTitle = "Earnings (₹)"
     const val replicaDeductionTitle = "Deductions (₹)"
     const val replicaNetLabel = "Net Remittance (Take Home)"

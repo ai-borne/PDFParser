@@ -98,7 +98,7 @@ class PayslipReplicaDetailScreenTest {
             }
             testDispatcher.scheduler.runCurrent()
 
-            onNodeWithContentDescription("Start Editing").performClick()
+            onNodeWithText(AppStrings.replicaEditLabel).performClick()
             testDispatcher.scheduler.runCurrent()
             assertTrue(viewModel.uiState.value.isEditModeActive)
 

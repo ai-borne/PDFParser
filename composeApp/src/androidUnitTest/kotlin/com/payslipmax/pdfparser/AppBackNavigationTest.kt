@@ -7,7 +7,6 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -170,7 +169,7 @@ class AppBackNavigationTest {
 
         // Enter edit mode (startEditingSession is a suspend viewModelScope.launch, so the test
         // dispatcher needs an explicit pump), then press back: exits edit mode only (decision 4).
-        composeRule.onNodeWithContentDescription("Start Editing").performScrollTo().performClick()
+        composeRule.onNodeWithText(AppStrings.replicaEditLabel).performScrollTo().performClick()
         testDispatcher.scheduler.runCurrent()
         composeRule.waitForIdle()
         assertTrue(viewModel.uiState.value.isEditModeActive)

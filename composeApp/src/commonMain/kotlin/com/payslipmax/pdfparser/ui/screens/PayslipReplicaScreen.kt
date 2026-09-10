@@ -1,6 +1,7 @@
 package com.payslipmax.pdfparser.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -23,7 +24,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -123,11 +123,23 @@ private fun ReplicaHeader(
             onBack = onBackClick,
             modifier = Modifier.weight(1f),
         )
-        IconButton(onClick = { if (isEditModeActive) onCancelSession() else onStartEditing() }) {
+        Column(
+            modifier =
+                Modifier
+                    .clickable(onClick = { if (isEditModeActive) onCancelSession() else onStartEditing() })
+                    .padding(AppDimensions.SpacingSmall),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            val editTint = if (isEditModeActive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
             Icon(
                 imageVector = if (isEditModeActive) Icons.Default.Close else Icons.Default.Edit,
-                contentDescription = if (isEditModeActive) "Cancel Editing" else "Start Editing",
-                tint = if (isEditModeActive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                contentDescription = null,
+                tint = editTint,
+            )
+            Text(
+                text = if (isEditModeActive) AppStrings.replicaCancelLabel else AppStrings.replicaEditLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = editTint,
             )
         }
     }

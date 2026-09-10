@@ -39,6 +39,22 @@ future paywall strategy — don't just tick boxes below without re-reading this.
   account with an expired subscription noted in App Review Information. Doesn't apply here since
   the backend is actually broken, but worth knowing for any *future* 2.1 rejection that isn't a
   real config bug.
+- **2026-09-10 decision — split v1.1 into two separate releases, don't bundle Step 4 and Step 5.**
+  Originally Section 6 said "ship Step 5 alongside Step 4 in the same v1.1 release." Superseded:
+  - **Release 1 (v1.1, "ODR polish")**: Gemma-on-iOS via On-Demand Resources only (Step 5, now
+    functionally complete per the updated section below). `FREE_LAUNCH_MODE` stays `true`. Low
+    risk, already verified end-to-end on device except the offline→Retry resume path.
+  - **Release 2 (v1.2, "monetization")**: Step 4 (RevenueCat + StoreKit paywall re-enable) on its
+    own, once fully verified in TestFlight sandbox.
+  - **Why**: Step 4 touches the exact RevenueCat/StoreKit surface that caused the original v1.0.0(2)
+    Guideline 2.1 rejection. Bundling it with the already-low-risk ODR work means a Step 4 bounce
+    (subscription review, sandbox purchase-flow bug, etc.) would hold back or re-risk the ODR fix
+    too. Decoupling lets Release 1 ship as soon as it's ready, independent of Apple's subscription
+    review turnaround and sandbox purchase-flow testing for Release 2.
+  - Rough estimate at time of decision: Release 1 ~2–4 days (retry re-test + TestFlight + App
+    Review), Release 2 ~5–8 days after that (gated mostly by Apple's own subscription review and
+    sandbox purchase-flow verification, not dev time). Directional only — Apple doesn't publish
+    SLAs.
 
 ### Implementation status
 
@@ -271,7 +287,7 @@ whole document exists to avoid. Track Step 4 and Step 5 as the two v1.1 workstre
 - [ ] **3.3** Submit live Play Store link along with PAN, bank account proof, and complete Video KYC.
 - [ ] **3.4** Receive BillDesk Merchant Approval for Google Play Payments Profile.
 
-### Step 4: Configure Full RevenueCat & StoreKit Pipeline (v1.1 Preparation)
+### Step 4: Configure Full RevenueCat & StoreKit Pipeline (Release 2 / v1.2)
 - [ ] **4.1** In App Store Connect > **Subscriptions**, create Auto-Renewable Subscription (`payslipmax_yearly_premium`), set ₹199/yr pricing, and attach review screenshot.
 - [ ] **4.2** In App Store Connect > **Agreements, Tax, and Banking**, ensure Paid Applications Agreement is active.
 - [ ] **4.3** In Google Play Console > **Monetize > Subscriptions**, create base plan and set to **Active**.
@@ -280,53 +296,55 @@ whole document exists to avoid. Track Step 4 and Step 5 as the two v1.1 workstre
 - [ ] **4.6** Update [`RevenueCatApiKey.ios.kt`](file:///Users/sunil/Downloads/PayslipMAX%20KMP/shared/src/iosMain/kotlin/com/payslipmax/pdfparser/billing/RevenueCatApiKey.ios.kt) with the newly generated `appl_...` key.
 - [ ] **4.7** Re-enable paywall gating and release v1.1 with monetization active across both platforms.
 
-### Step 5: Wire Up Gemma-on-iOS via Background Assets (v1.1 Preparation)
+### Step 5: Wire Up Gemma-on-iOS via On-Demand Resources (Release 1 / v1.1)
 
 Android already ships the real Tier 6 offline Gemma fallback via a Gradle-driven Play Asset Delivery
-step (Section 7). iOS has the Kotlin/Swift scaffolding in place
-(`GemmaBaseModelInstaller.ios.kt`, `GemmaModelPaths.ios.kt`, `GemmaBackgroundAssetsBridge.swift`,
-`GemmaEngine.ios.kt`) but the actual download mechanism — Apple's **Background Assets** framework —
-was left unfinished pending Apple Developer Program enrollment (per code comments in
-`GemmaBaseModelInstaller.ios.kt`). That enrollment is no longer a blocker as of the v1.0 approval, so
-this is unblocked but not yet scheduled. Until it's done, iOS ships with Tier 6 silently
-non-functional (unlike Android's loud placeholder warning) — everything else (Tiers 1–5, 7) is
-unaffected since Gemma is a standby fallback, not required for normal parsing.
+step (Section 7). iOS originally planned to use Apple's **Background Assets** framework for this, but
+that was superseded by **On-Demand Resources (ODR)** instead — see `GemmaModelPaths.ios.kt`,
+`GemmaBaseModelInstaller.ios.kt`, and `GemmaOnDemandResourceBridge.swift` (commit `9fa3347`), which
+replaced the unfinished `GemmaBackgroundAssetsBridge.swift`. Unlike Background Assets (OS-scheduled,
+autonomous), ODR is app-triggered — `IosGemmaBaseModelInstaller.install()` calls `installTrigger`,
+which `GemmaOnDemandResourceBridge.beginFetch()` wires to `NSBundleResourceRequest`.
 
-Unlike Android (the app itself triggers the asset fetch via `requestFetch()`), Background Assets is
-OS-scheduled and autonomous — it decides when to download based on device state (Wi-Fi, charging,
-etc.), not the app.
-
-- [ ] **5.1** Host the `.litertlm` model file in Cloudflare R2 behind a stable, versioned HTTPS URL
-      (a public R2 bucket URL or an R2-backed Worker route). Apple's Background Assets framework just
-      needs a plain downloadable HTTPS URL — no special protocol — but the URL must stay stable across
-      app versions since it's referenced from the shipped manifest.
-- [ ] **5.2** Author the Background Assets **manifest** (asset ID, download URL, expected size,
-      checksum) and bundle it into the app binary — this is small metadata shipped at build time, not
-      the model itself.
-- [ ] **5.3** Create the **Background Assets extension target** in `iosApp/iosApp.xcodeproj` (Xcode-only
-      work — cannot be done headlessly; needs a developer at the keyboard).
-- [ ] **5.4** Add the **App Group entitlement** shared between the main app and the extension so both
-      can read/write the downloaded model from the same container (`GemmaModelPaths.ios.kt` already
-      resolves the expected path inside this App Group container).
-- [ ] **5.5** Configure the required `Info.plist` keys for the Background Assets extension (asset pack
-      identifiers, download domain allowlist if applicable).
-- [ ] **5.6** Wire `GemmaBackgroundAssetsBridge.swift` end-to-end: confirm it correctly forwards
-      progress/completion `NotificationCenter` events into the Kotlin
-      `IosGemmaBaseModelInstaller.companion` closures (bridge code already exists; verify against the
-      real extension rather than assuming the stub wiring is correct).
-- [ ] **5.7** Pin/verify the model file's checksum on the iOS side, matching Android's SHA-256 pinning
-      pattern (Section 7) — reject a corrupted/wrong-version download rather than silently loading it.
-- [ ] **5.8** Device-test the full flow on a physical iPhone: fresh install → wait for OS-scheduled
-      download (Wi-Fi + charging) → confirm `GemmaEngine.ios.kt` loads the model from the resolved
-      path → confirm a Tier 6 fallback case (a document that needs it) actually produces output.
-      Also test the "not yet downloaded" fallback path to confirm the app degrades gracefully (Tiers
-      1–5/7 only) rather than erroring.
+- [x] **5.1–5.6 (superseded)** — the R2-hosting/manifest/extension-target/App-Group/Info.plist plan
+      below was for Background Assets and is no longer applicable. ODR instead relies on Xcode's
+      built-in Resource Tags mechanism: `gemma-active.litertlm` is tagged `"GemmaModel"` in the
+      target's Resource Tags panel with "On Demand" download policy, and `NSBundle.pathForResource`
+      resolves it once fetched — no R2 hosting, custom manifest, extension target, or App Group
+      needed. Each dev machine must place the gitignored model file at `iosApp/iosApp/` and apply the
+      tag locally before building.
+- [x] **5.6 (bridge wiring)** — `GemmaOnDemandResourceBridge.swift` forwards
+      `NSBundleResourceRequest` progress/completion into
+      `IosGemmaBaseModelInstaller.companion.progressReporter`/`completionReporter`. Verified
+      end-to-end on a physical device: model downloads via ODR, loads from the resolved bundle path,
+      Tier 6 inference runs on a real payslip. Offline degradation also verified: app works fine
+      without Gemma when offline, shows a non-blocking "Offline AI Download Error" banner with Retry,
+      never crashes/hangs.
+- [ ] **5.7** Checksum pinning for the ODR-delivered file — **recommended: skip**. Apple's own binary
+      signing/ODR integrity covers this differently than Android's manual SHA-256 pin (Section 7); ODR
+      resources are served from Apple's CDN and validated as part of the signed app bundle's resource
+      catalog, not a raw downloaded file the app must self-verify. Revisit only if evidence emerges of
+      ODR resource tampering/corruption in the wild.
+- [ ] **5.8 (partial)** Device-tested: fresh install → ODR fetch → `GemmaEngine.ios.kt` loads the
+      model → Tier 6 fallback produces output — **done**. Offline "not yet downloaded" degradation —
+      **done**. **Not yet verified**: whether tapping **Retry** on the offline-error banner actually
+      resumes the ODR fetch after the device comes back online. Blocked so far by an Xcode/lldb quirk
+      (the debug session drops when toggling network, even over USB — modern Xcode tunnels debugging
+      through RemoteXPC, which shares infra with the network stack) and by Console.app device log
+      streaming proving unreliable in testing on 2026-09-10 (empty even when actively streaming with
+      no filter, after a confirmed fresh install). Planned re-test method: reattach Xcode's debugger
+      only *after* re-enabling network but *before* tapping Retry (the RemoteXPC drop only happens
+      during the network toggle itself, not while stable), or inspect the device's app container
+      directly (Xcode → Devices and Simulators → Download Container) to rule out a stale/partial
+      debug-only sideloaded model file short-circuiting `resolveInstalledGemmaModelPath()`
+      (`GemmaModelPaths.ios.kt`) before the ODR retry ever fires.
 - [ ] **5.9** Document the release procedure here (mirroring Section 7's Android procedure) once
       finalized, so future iOS release builds have the same "what must be true before shipping" gate
       Android already has.
 
-Ship Step 5 alongside Step 4 in the same v1.1 release — both are deferred-from-v1.0 workstreams with
-no interdependency between them, so they can be built in parallel.
+Ship Step 5 as its own release (**Release 1 / v1.1**), independent of Step 4 — see the 2026-09-10
+decision in Section 0. `FREE_LAUNCH_MODE` stays `true` for this release; only the Gemma delivery
+mechanism changes.
 
 ---
 

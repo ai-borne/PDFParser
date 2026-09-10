@@ -25,15 +25,12 @@ final class GemmaOnDemandResourceBridge {
 
     /// Registers the bridge on app startup. Call from AppDelegate.didFinishLaunchingWithOptions.
     static func register() {
-        NSLog("[GemmaODR] register() called")
         IosGemmaBaseModelInstaller.companion.installTrigger = {
-            NSLog("[GemmaODR] installTrigger invoked")
             GemmaOnDemandResourceBridge.shared.beginFetch()
         }
     }
 
     private func beginFetch() {
-        NSLog("[GemmaODR] beginFetch() called, tag=\(Self.tag)")
         let request = NSBundleResourceRequest(tags: [Self.tag])
         activeRequest = request
 
@@ -41,12 +38,10 @@ final class GemmaOnDemandResourceBridge {
             let fraction = progress.fractionCompleted
             let total: Int64 = 1000
             let done = Int64(fraction * Double(total))
-            NSLog("[GemmaODR] progress fraction=\(fraction)")
             self.reportProgress(bytesDownloaded: done, totalBytes: total)
         }
 
         request.beginAccessingResources { [weak self] error in
-            NSLog("[GemmaODR] beginAccessingResources completion, error=\(String(describing: error))")
             DispatchQueue.main.async {
                 self?.progressObservation = nil
                 if let error {

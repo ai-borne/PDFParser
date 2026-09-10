@@ -325,19 +325,22 @@ which `GemmaOnDemandResourceBridge.beginFetch()` wires to `NSBundleResourceReque
       resources are served from Apple's CDN and validated as part of the signed app bundle's resource
       catalog, not a raw downloaded file the app must self-verify. Revisit only if evidence emerges of
       ODR resource tampering/corruption in the wild.
-- [ ] **5.8 (partial)** Device-tested: fresh install → ODR fetch → `GemmaEngine.ios.kt` loads the
-      model → Tier 6 fallback produces output — **done**. Offline "not yet downloaded" degradation —
-      **done**. **Not yet verified**: whether tapping **Retry** on the offline-error banner actually
-      resumes the ODR fetch after the device comes back online. Blocked so far by an Xcode/lldb quirk
-      (the debug session drops when toggling network, even over USB — modern Xcode tunnels debugging
-      through RemoteXPC, which shares infra with the network stack) and by Console.app device log
-      streaming proving unreliable in testing on 2026-09-10 (empty even when actively streaming with
-      no filter, after a confirmed fresh install). Planned re-test method: reattach Xcode's debugger
-      only *after* re-enabling network but *before* tapping Retry (the RemoteXPC drop only happens
-      during the network toggle itself, not while stable), or inspect the device's app container
-      directly (Xcode → Devices and Simulators → Download Container) to rule out a stale/partial
-      debug-only sideloaded model file short-circuiting `resolveInstalledGemmaModelPath()`
-      (`GemmaModelPaths.ios.kt`) before the ODR retry ever fires.
+- [x] **5.8 (partial, skipped for this release)** Device-tested: fresh install → ODR fetch →
+      `GemmaEngine.ios.kt` loads the model → Tier 6 fallback produces output — **done**. Offline "not
+      yet downloaded" degradation — **done**. **Decision (2026-09-10): ship without verifying** whether
+      tapping **Retry** on the offline-error banner actually resumes the ODR fetch after the device
+      comes back online. Rationale: the fallback path itself (non-blocking banner, no crash/hang) is
+      already verified — worst case if Retry is silently broken is a user must force-quit/relaunch to
+      retry, a degraded-UX issue, not a crash or data-integrity one. Tracked as a fast-follow, not a
+      release blocker. Blocked so far by an Xcode/lldb quirk (the debug session drops when toggling
+      network, even over USB — modern Xcode tunnels debugging through RemoteXPC, which shares infra
+      with the network stack) and by Console.app device log streaming proving unreliable in testing on
+      2026-09-10 (empty even when actively streaming with no filter, after a confirmed fresh install).
+      Planned re-test method (next release): reattach Xcode's debugger only *after* re-enabling network
+      but *before* tapping Retry (the RemoteXPC drop only happens during the network toggle itself, not
+      while stable), or inspect the device's app container directly (Xcode → Devices and Simulators →
+      Download Container) to rule out a stale/partial debug-only sideloaded model file short-circuiting
+      `resolveInstalledGemmaModelPath()` (`GemmaModelPaths.ios.kt`) before the ODR retry ever fires.
 - [ ] **5.9** Document the release procedure here (mirroring Section 7's Android procedure) once
       finalized, so future iOS release builds have the same "what must be true before shipping" gate
       Android already has.
@@ -345,6 +348,44 @@ which `GemmaOnDemandResourceBridge.beginFetch()` wires to `NSBundleResourceReque
 Ship Step 5 as its own release (**Release 1 / v1.1**), independent of Step 4 — see the 2026-09-10
 decision in Section 0. `FREE_LAUNCH_MODE` stays `true` for this release; only the Gemma delivery
 mechanism changes.
+
+### 5.10 — v1.1.0 (3) submitted to App Review, 2026-09-10
+
+- [x] **Discovered mid-submission**: the first upload attempt, `1.1.0 (2)`, failed App Store
+      processing with **error 90557 "Thinned app size is too large"** — the `GemmaModel` ODR asset
+      pack is 584MB, and Apple caps a single ODR asset pack at **512MB on iOS/iPadOS below 18**
+      ([Apple's ODR size-limits doc](https://developer.apple.com/help/app-store-connect/reference/app-uploads/on-demand-resources-size-limits/)).
+      The project's `Minimum Deployments` was iOS 16.0 at the time, so the stricter 512MB rule
+      applied.
+- [x] **Fix chosen: raise `Minimum Deployments` to iOS 18.6**, not shrink the model or revert to
+      Background Assets. On iOS/iPadOS 18+, the same Apple doc raises the per-pack limit to 8GB,
+      which the 584MB pack clears with room to spare — a one-line Xcode change vs. reviving the
+      superseded Background Assets/R2-hosting architecture (Section 6, Step 5 intro) or requantizing
+      the model. **Trade-off accepted knowingly**: this release drops support for iOS 16–18.5
+      devices. Revisit if evidence emerges that a meaningful share of the install base sits below
+      iOS 18.
+- [x] **Apple's own guidance flagged for future reference**: the ODR size-limits doc notes ODR
+      itself is deprecated as of iOS/iPadOS 27, with Apple recommending migration to **Background
+      Assets** — the exact framework this project moved *away from* in favor of ODR (commit
+      `9fa3347`). Not actionable now, but worth re-reading before any future iOS min-version bump
+      that would re-trigger ODR size-limit tiers, and before the framework choice is revisited long
+      term.
+- [x] Also discovered and fixed during this pass: `Supported Destinations` had **Mac (Designed for
+      iPhone)** and **Apple Vision (Designed for iPhone)** enabled by Xcode default (any iOS 16+
+      target auto-qualifies for both compatibility modes) — removed both, since the ODR/Gemma path
+      was never tested on those platforms. Left only **iPhone** as a supported destination.
+- [x] Marketing Version bumped to `1.1.0`, Build to `3` (`1` and `2` were consumed by local/failed
+      upload attempts and not reused, to avoid ambiguity with the rejected `1.1.0 (2)` upload record
+      already in App Store Connect).
+- [x] Rebuilt after a clean build folder (stale DerivedData had initially caused the new build
+      number not to propagate into one archive) — `1.1.0 (3)` processed successfully in TestFlight.
+- [x] New App Store version `1.1.0` created in App Store Connect (separate from the existing `1.0`
+      version entry, which stays "Ready for Distribution" and untouched), build `1.1.0 (3)` attached,
+      Version Release set to manual, and **submitted for App Review 2026-09-10**.
+- [ ] Once approved: release manually (per the same discipline as Step 1.7), verify the public App
+      Store listing reflects the new iOS 18.6 minimum requirement, and confirm the ODR download
+      actually triggers correctly for real users post-install (device-verified pre-submission per
+      5.6/5.8, but worth a final live-listing spot check).
 
 ---
 

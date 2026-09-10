@@ -110,6 +110,15 @@ explicitly in the final report as evidence of the testing rigor, not just as a f
 **Status:** uploaded and published. See the status snapshot above for pre-upload verification
 detail and the Play Console bundle-diff numbers confirming the shrink actually worked.
 
+### versionCode 9 (in progress, not yet submitted) — post-v8 iterative UX fixes
+Commits: `bd0f2c4` (History screen ledger toggle affordance), `c80768f` (Digital Replica edit button label).
+
+**What this means in plain terms:** two discoverability fixes discovered post-v8 during device testing:
+- **History ledger toggle (bd0f2c4):** The "Historical Ledger Table" header row's expand/collapse control was only tappable on the small chevron icon, not the full row like the year ribbons below it. Fixed by making the entire row clickable (matching the year-header pattern), replacing the text-glyph chevron with Material Icons, and adding `contentDescription` strings for accessibility. Covered by new regression test `HistoricalLedgerCardUiTest.kt` verifying the whole row toggles expansion.
+- **Digital Replica edit affordance (c80768f):** The edit/cancel button in the Payslip Digital Replica header was a bare pencil icon with no label, making its purpose (correction mode) invisible to users scanning the screen for how to fix wrong values. Fixed by stacking an "Edit"/"Cancel" label directly below the pencil icon (matching the bottom-nav icon-above-label convention) and updating the subtitle to name the action: "Tap a code for details · Edit to fix a wrong value". Updated tests to target the visible label instead of the now-hidden content description.
+
+**Rationale for v9:** both fixes are pure UI/UX improvements (no logic changes, no risk to parsing/data) and directly address discoverability issues identified during closed-testing device review. Releasing them as part of v9 before Day 14 keeps the app feeling responsive to tester feedback and demonstrates iterative polish in the final submission report.
+
 ## What still needs to happen before the Day-14 final submission
 
 1. ~~Upload versionCode 8 AAB to Closed Testing.~~ Done 2026-09-09.

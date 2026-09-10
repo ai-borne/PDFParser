@@ -227,6 +227,8 @@ object AppStrings {
     const val historyTaxLabel = "Tax"
     const val historyChevronContentDescription = "Toggle Year Visibility"
     const val historyLedgerTitle = "Historical Ledger Table"
+    const val historyLedgerExpandDesc = "Expand historical ledger table"
+    const val historyLedgerCollapseDesc = "Collapse historical ledger table"
     const val historyLedgerHeaderMonth = "Month"
     const val historyLedgerHeaderBasic = "Basic"
     const val historyLedgerHeaderGross = "Gross"

@@ -3,6 +3,7 @@
 package com.payslipmax.pdfparser.insights.gemma
 
 import com.payslipmax.pdfparser.subscription.isDebugBuild
+import platform.Foundation.NSBundle
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
@@ -12,36 +13,31 @@ actual fun gemmaModelStorageDir(): String = documentDirectory()
 actual fun fileExistsAt(path: String): Boolean = path.isNotEmpty() && NSFileManager.defaultManager.fileExistsAtPath(path)
 
 /**
- * Must match exactly the App Group entitlement shared between `iosApp` and the (not-yet-created)
- * Background Assets extension target — see Phase 4's Xcode-side handoff in
- * docs/AI_INSIGHTS_PIPELINE.md. Getting this string wrong is silent: a mismatched identifier just
- * makes [NSFileManager.containerURLForSecurityApplicationGroupIdentifier] return null, which
- * [resolveInstalledGemmaModelPath] already treats identically to "not installed yet".
+ * Resource name (sans extension) the model is tagged under in the Xcode ODR asset catalog — see
+ * `GEMMA_ODR_TAG` in `GemmaOnDemandResourceBridge.swift`. Must match the file's on-disk base name
+ * exactly, since [NSBundle.pathForResource] looks it up by name+extension, not by ODR tag.
  */
-private const val GEMMA_APP_GROUP_IDENTIFIER = "group.com.payslipmax.pdfparser.gemma"
+private const val GEMMA_RESOURCE_NAME = "gemma-active"
+private const val GEMMA_RESOURCE_EXTENSION = "litertlm"
 
 /**
- * Resolves the Gemma base model's on-disk path inside the Background Assets App Group container.
- * Returns null both when the App Group entitlement isn't configured yet (Phase 4's Xcode-side work,
- * blocked on Apple Developer Program enrollment) and when the entitlement exists but the extension
- * hasn't finished downloading the model into it — both cases mean "not ready" to the caller.
+ * Resolves the Gemma base model's on-disk path once Apple's On-Demand Resources (ODR) mechanism has
+ * fetched it. Once an ODR-tagged resource has been downloaded and a live `NSBundleResourceRequest`
+ * holds access to it (see `GemmaOnDemandResourceBridge.swift`), it becomes queryable through the
+ * ordinary [NSBundle.mainBundle] resource lookup — no App Group or shared container needed, since
+ * (unlike Background Assets) ODR resources land inside the main app bundle's own on-demand storage.
+ * Returns null if the resource hasn't been fetched yet (or has been purged by the OS for storage
+ * pressure), which the caller already treats as "not installed yet".
  *
  * Debug builds additionally fall back to a manually-sideloaded file in the app's Documents
- * directory (e.g. dropped in via Xcode's device file browser) when the App Group container isn't
- * reachable — the only way to test Tier 6 on a real device before the Xcode-side extension target
- * exists. Release builds never take this branch.
+ * directory (e.g. dropped in via Xcode's device file browser) — useful for testing Tier 6 in the
+ * simulator, where ODR fetches don't reliably trigger. Release builds never take this branch.
  */
 actual fun resolveInstalledGemmaModelPath(): String? {
-    val fileName = GemmaModelStorageManager().getRecommendedModelFileName()
-    val containerPath =
-        NSFileManager.defaultManager
-            .containerURLForSecurityApplicationGroupIdentifier(GEMMA_APP_GROUP_IDENTIFIER)
-            ?.path
-    if (containerPath != null) {
-        val modelPath = "$containerPath/$fileName"
-        if (fileExistsAt(modelPath)) return modelPath
-    }
+    val odrPath = NSBundle.mainBundle.pathForResource(GEMMA_RESOURCE_NAME, ofType = GEMMA_RESOURCE_EXTENSION)
+    if (odrPath != null && fileExistsAt(odrPath)) return odrPath
     if (isDebugBuild()) {
+        val fileName = GemmaModelStorageManager().getRecommendedModelFileName()
         val sideloadPath = "${gemmaModelStorageDir()}/$fileName"
         if (fileExistsAt(sideloadPath)) return sideloadPath
     }

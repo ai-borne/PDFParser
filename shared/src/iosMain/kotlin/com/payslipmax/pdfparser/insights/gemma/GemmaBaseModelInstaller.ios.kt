@@ -5,19 +5,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Background Assets-backed installer for the Tier 6 base model. Unlike Android's Play Asset
- * Delivery (which the app itself triggers via `requestFetch()`), Background Assets schedules its
- * download autonomously — device charging, on Wi-Fi, not in Low Power Mode — so [install] here is
- * not a trigger; the OS decides when its extension runs, not this call.
+ * On-Demand Resources (ODR)-backed installer for the Tier 6 base model. Unlike Background Assets,
+ * ODR is app-triggered like Android's Play Asset Delivery: [install] calls [installTrigger], which
+ * `GemmaOnDemandResourceBridge.swift` wires to `NSBundleResourceRequest.beginAccessingResources`.
  *
- * Progress/completion instead arrive via [progressReporter]/[completionReporter]: this instance
- * registers its own reactive closures into those companion-object slots at construction, and the
- * still-to-be-written `GemmaBackgroundAssetsBridge.swift` — registered once from `iOSApp.swift`'s
+ * Progress/completion arrive via [progressReporter]/[completionReporter]: this instance registers
+ * its own reactive closures into those companion-object slots at construction, and
+ * `GemmaOnDemandResourceBridge.swift` — registered once from `iOSApp.swift`'s
  * `AppDelegate.didFinishLaunchingWithOptions`, the same call-site pattern as
- * `GemmaInferenceBridge.register()` — forwards the extension's real progress/completion events into
- * them. That Swift-side half (new Xcode target, App Group entitlement, Info.plist keys) is Phase
- * 4's remaining, Xcode-only work, blocked on Apple Developer Program enrollment — everything in
- * this file is pure Kotlin/Native and needs none of that to compile, test, or run.
+ * `GemmaInferenceBridge.register()` — forwards the real ODR progress/completion events into them.
  */
 class IosGemmaBaseModelInstaller : GemmaBaseModelInstaller {
     private val _state = MutableStateFlow<BaseModelInstallState>(BaseModelInstallState.NotStarted)
@@ -35,25 +31,29 @@ class IosGemmaBaseModelInstaller : GemmaBaseModelInstaller {
                 if (success) {
                     BaseModelInstallState.Installed(resolveInstalledGemmaModelPath() ?: "")
                 } else {
-                    BaseModelInstallState.Failed(errorMessage ?: "Background Assets download failed")
+                    BaseModelInstallState.Failed(errorMessage ?: "On-Demand Resource download failed")
                 }
         }
     }
 
     override suspend fun install() {
-        // Nothing to trigger — Background Assets schedules itself. If a previous launch's download
-        // already completed (e.g. this is a re-verify-on-init call, not the first-ever launch),
-        // reflect that immediately rather than sitting in NotStarted until the next OS-scheduled run.
+        // Reflect an already-fetched resource immediately (e.g. a re-verify-on-init call after a
+        // previous launch completed the fetch) rather than re-triggering it needlessly.
         resolveInstalledGemmaModelPath()?.let { path ->
             _state.value = BaseModelInstallState.Installed(path)
+            return
         }
+        installTrigger?.invoke()
     }
 
     companion object {
-        /** Invoked by GemmaBackgroundAssetsBridge.swift with (bytesDownloaded, totalBytes). */
+        /** Invoked to start the ODR fetch; set by GemmaOnDemandResourceBridge.swift at registration. */
+        var installTrigger: (() -> Unit)? = null
+
+        /** Invoked by GemmaOnDemandResourceBridge.swift with (bytesDownloaded, totalBytes). */
         var progressReporter: ((Long, Long) -> Unit)? = null
 
-        /** Invoked by GemmaBackgroundAssetsBridge.swift with (success, errorMessage). */
+        /** Invoked by GemmaOnDemandResourceBridge.swift with (success, errorMessage). */
         var completionReporter: ((Boolean, String?) -> Unit)? = null
     }
 }

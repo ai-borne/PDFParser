@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 71;
+	objectVersion = 75;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -21,6 +21,11 @@
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		10656F663022FF7A0081D901 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			assetTagsByRelativePath = {
+				"gemma-active.litertlm" = (
+					GemmaModel,
+				);
+			};
 			membershipExceptions = (
 				Info.plist,
 			);
@@ -111,6 +116,9 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
+				KnownAssetTags = (
+					GemmaModel,
+				);
 				LastSwiftUpdateCheck = 1130;
 				LastUpgradeCheck = 2650;
 				ORGANIZATIONNAME = orgName;
@@ -121,7 +129,6 @@
 				};
 			};
 			buildConfigurationList = 7555FF76242A565900829871 /* Build configuration list for PBXProject "iosApp" */;
-			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -133,6 +140,7 @@
 				7C4F1707FE80007C7DCEAE3C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				105CF8092FF9EE0C00B6F15D /* XCLocalSwiftPackageReference "Vendor/LiteRTLM" */,
 			);
+			preferredProjectObjectVersion = 50;
 			productRefGroup = 7555FF7C242A565900829871 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";

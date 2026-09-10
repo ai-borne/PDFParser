@@ -69,5 +69,9 @@ __pycache__/
 # bundleRelease; never committed (see gemmaModelPack/src/main/assets/PLACEHOLDER_*.txt)
 gemmaModelPack/src/main/assets/*.litertlm
 
+# Tier 6 Gemma base model binary, iOS On-Demand Resource (~557MB) — added locally in Xcode per
+# developer machine (tagged "GemmaModel"), never committed; same reasoning as the Android path above
+iosApp/iosApp/*.litertlm
+
 iosApp/iosApp.xcodeproj/project.xcworkspace/contents.xcworkspacedata
 iosApp/iosApp.xcodeproj/project.xcworkspace/xcuserdata/sunil.xcuserdatad/UserInterfaceState.xcuserstate

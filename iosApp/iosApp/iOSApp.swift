@@ -114,7 +114,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         GemmaInferenceBridge.register()
 
         // Bridge iOS Background Assets model delivery progress/completion to KMP.
-        GemmaBackgroundAssetsBridge.register()
+        GemmaOnDemandResourceBridge.register()
 
         return true
     }

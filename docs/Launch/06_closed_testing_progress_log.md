@@ -130,7 +130,22 @@ Note: `9fa3347` (iOS Gemma model delivery switch to On-Demand Resources) landed 
 **Status:** Released to the **Internal testing** track only (Play Console: "Available to internal testers," 1 version code, released Sep 10, 2026, 8:46 PM). **Not yet promoted to Closed testing** — Closed testing's latest release remains versionCode 8 (see status snapshot above); the 14-day mandatory-testing clock referenced in that snapshot is still running against v8, not v9. Promote to Closed testing once internal verification of v9 completes.
 
 ### versionCode 10 (in progress, not yet built) — Insights hero + further UX polish
-Commits so far: `0122253` (Insights screen hero: "Insights" title + month-picker ribbon + "Know your finances well" subtext, matching the Dashboard/History/Settings header pattern — Insights was the only main-tab screen missing a hero).
+Commits so far:
+- `0122253` — Insights screen hero, first pass: added "Insights" title + month-picker + subtext
+  inside an elevated `Surface` "ribbon," matching the Dashboard/History/Settings header pattern
+  (Insights was the only main-tab screen missing a hero).
+- `9f580f2` — Insights hero, refinement pass, after reviewing `0122253` on-device: removed the
+  elevated `Surface` wrapper so the header sits directly on the screen background like every other
+  tab (no more visually distinct "ribbon"); reordered to title → subtext → month picker; changed
+  the subtext copy to "Monthly details: Track it. Know it. Own it."; made the month-picker chip
+  full-width with generous padding for a larger thumb-friendly tap target; recolored the chip to
+  the same `primaryContainer` blue used by the Dashboard officer-info card instead of the Material3
+  default purple, for theme consistency. Also split `MonthSelectorDropdown` into a smaller helper
+  to stay under the 50-line composable limit.
+
+**What this means in plain terms:** Insights now has the same title/subtext header every other
+tab has, and the month picker reads as a first-class, thumb-friendly control themed to match the
+rest of the app rather than a generic Material3 chip.
 
 **Status:** In progress on the same branch. More changes are planned before this is built and pushed to Internal testing; the push itself is queued behind v9's promotion from Internal testing to Closed testing (avoiding two releases in flight on different tracks at once).
 

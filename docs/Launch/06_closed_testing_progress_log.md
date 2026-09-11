@@ -8,18 +8,29 @@ at the end. Releases typically land on Internal testing first (fast, small-panel
 are promoted to Closed testing once verified; the 14-day mandatory-testing clock applies only to the
 Closed testing track, so each release's status line below states which track it's actually on.
 
-## Status snapshot (as of 2026-09-09, post-upload, symbolication-verified)
+## Status snapshot (as of 2026-09-11, post-upload, device-verified)
 
 - **Track:** Closed testing (Alpha), 177 countries/regions.
-- **Live release:** `8 (1.0.0)` — versionCode 8, published via full rollout on 2026-09-09 20:12
-  (Play Console Submission ID 6, submitted 19:49, published 20:12). Release name in Console:
-  "8 (1.0.0) - R8 keep-rule hardening".
-- **Queued behind this, on a separate track:** `9 (1.0.0)` is live on **Internal testing** (not
-  Closed testing) as of 2026-09-10 20:46 — see versionCode 9 entry below for what it contains and
-  why it hasn't been promoted yet. `10 (1.0.0)` is in progress on top of it, not yet built.
-- **Testers:** 25/25 opted in (third-party tester panel, "Private Testing Pro" plan). Mandatory
-  period tracker showed Day 2 of 16 as of the v8 upload.
-- **Reports:** 0/3 ready as of the v8 upload.
+- **Live release:** `10 (1.0.0)` — versionCode 10, uploaded and confirmed installed on the physical
+  Pixel 9 test device via the Closed testing opt-in link on 2026-09-11 (`dumpsys package` shows
+  `versionCode=10`, `installerPackageName=com.android.vending`). This build skipped straight from
+  8 → 10 on this track — versionCode 9 was released to **Internal testing only** and never
+  promoted to Closed testing (superseded by 10 before promotion happened); see the versionCode 9
+  entry below.
+- **versionCode 9** remains live on Internal testing only, unchanged.
+- **Testers:** 25/25 opted in (third-party tester panel, "Private Testing Pro" plan) as of the v8
+  upload; reconfirm current opted-in count against the v10 release in Play Console's own
+  "Testing" tab rather than assuming it's unchanged.
+- **Reports:** 0/3 ready as of the v8 upload; not yet rechecked for v10.
+- **Device-install snag on v10 (resolved):** the closed-testing opt-in link on the Pixel 9 initially
+  failed with "You cannot install this app because another user has already installed an
+  incompatible version on this device." Root cause: a leftover sideloaded copy of the app
+  (`versionCode=9`, `installerPackageName=null` — installed outside Play during earlier ad-hoc
+  testing) was still present, and Play's installer won't take over an app it didn't originally
+  install. Fixed by `adb uninstall in.aiborne.payslipmax` followed by a Play Store data clear
+  (`adb shell pm clear com.android.vending`, needed separately because the Play Store app itself
+  was also serving a stale listing), then reinstalling via the opt-in link. Confirmed post-fix:
+  `versionCode=10`, `installerPackageName=com.android.vending`.
 - **Pre-upload verification done:** before uploading, the exact `composeApp-release.aab` was
   validated with `bundletool` (manifest dump confirmed versionCode 8 / versionName 1.0.0 /
   targetSdk 36, structural `validate` passed clean) and jarsigner-verified against the release
@@ -127,10 +138,10 @@ Note: `9fa3347` (iOS Gemma model delivery switch to On-Demand Resources) landed 
 
 **Rationale for v9:** both fixes are pure UI/UX improvements (no logic changes, no risk to parsing/data) and directly address discoverability issues identified during closed-testing device review. Releasing them keeps the app feeling responsive to tester feedback and demonstrates iterative polish in the final submission report.
 
-**Status:** Released to the **Internal testing** track only (Play Console: "Available to internal testers," 1 version code, released Sep 10, 2026, 8:46 PM). **Not yet promoted to Closed testing** — Closed testing's latest release remains versionCode 8 (see status snapshot above); the 14-day mandatory-testing clock referenced in that snapshot is still running against v8, not v9. Promote to Closed testing once internal verification of v9 completes.
+**Status:** Released to the **Internal testing** track only (Play Console: "Available to internal testers," 1 version code, released Sep 10, 2026, 8:46 PM). **Superseded on Closed testing by versionCode 10** (below) before ever being promoted — Closed testing went 8 → 10 directly. v9 remains live on Internal testing only.
 
-### versionCode 10 (in progress, not yet built) — Insights hero + further UX polish
-Commits so far:
+### versionCode 10 — released to Closed testing 2026-09-11 — Insights hero + further UX polish
+Commits:
 - `0122253` — Insights screen hero, first pass: added "Insights" title + month-picker + subtext
   inside an elevated `Surface` "ribbon," matching the Dashboard/History/Settings header pattern
   (Insights was the only main-tab screen missing a hero).
@@ -142,12 +153,21 @@ Commits so far:
   the same `primaryContainer` blue used by the Dashboard officer-info card instead of the Material3
   default purple, for theme consistency. Also split `MonthSelectorDropdown` into a smaller helper
   to stay under the 50-line composable limit.
+- `4801a19` — versionCode bump itself (9 → 10). Needed because versionCode 9 was already consumed
+  by the Internal testing release above; Play requires a distinct, previously-unused versionCode
+  per track upload.
 
 **What this means in plain terms:** Insights now has the same title/subtext header every other
 tab has, and the month picker reads as a first-class, thumb-friendly control themed to match the
-rest of the app rather than a generic Material3 chip.
+rest of the app rather than a generic Material3 chip. This release carries both the v9 fixes
+(History ledger toggle, Digital Replica edit affordance — v9 was never promoted, so this is the
+first time those fixes reach Closed testing) and the Insights hero work.
 
-**Status:** In progress on the same branch. More changes are planned before this is built and pushed to Internal testing; the push itself is queued behind v9's promotion from Internal testing to Closed testing (avoiding two releases in flight on different tracks at once).
+**Status:** Uploaded and confirmed installed via Play on the Pixel 9 test device (see status
+snapshot above for the install-conflict snag and its fix). **No R8/proguard changes are included in
+this build** — the R8 keep-rule rollout plan
+([06_R8_Serialization_Crashlytics_Rollout_Plan.md](../Plan/06_R8_Serialization_Crashlytics_Rollout_Plan.md))
+Phase 10/11 work has not started yet and is now retargeted at **versionCode 11**.
 
 ## What still needs to happen before the Day-14 final submission
 

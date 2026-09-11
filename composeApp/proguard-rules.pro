@@ -8,19 +8,6 @@
 
 # 2. Kotlinx Serialization
 -keepattributes *Annotation*,ElementValuePairs
--keepclassmembers class * implements kotlinx.serialization.KSerializer {
-    *** INSTANCE;
-}
--keepclassmembers class * {
-    @kotlinx.serialization.SerialName <fields>;
-    @kotlinx.serialization.Serializable <fields>;
-}
--keepclassmembers @kotlinx.serialization.Serializable class * {
-    *** Companion;
-}
--keepclasseswithmembers class * {
-    kotlinx.serialization.KSerializer serializer(...);
-}
 
 # 3. Room Database & SQLite
 -dontwarn androidx.room.paging.**

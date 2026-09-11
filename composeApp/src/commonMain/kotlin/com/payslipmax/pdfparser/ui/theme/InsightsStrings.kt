@@ -2,7 +2,7 @@ package com.payslipmax.pdfparser.ui.theme
 
 object InsightsStrings {
     // Hero (top bar title + subtext, above the month selector)
-    const val heroSubtitle = "Know your finances well"
+    const val heroSubtitle = "Monthly details: Track it. Know it. Own it."
 
     // Wellness chip, month selector & score driver labels
     const val wellnessChipLabel = "Pay Health"

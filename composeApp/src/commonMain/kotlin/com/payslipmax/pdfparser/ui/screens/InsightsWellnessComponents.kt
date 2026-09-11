@@ -1,9 +1,12 @@
 package com.payslipmax.pdfparser.ui.screens
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -11,8 +14,8 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,6 +34,8 @@ import kotlin.math.abs
 // ── Top bar: hero title/subtext + month selector ─────────────────────────────
 // Pay Health now surfaces only as the expandable chip inside MonthlySnapshot (D-approved: single
 // surface for the score) — the top-bar pill was removed in the Phase 4 redesign wiring.
+// Plain Column on the screen background, matching HistoryHeader/Settings — no elevated Surface
+// wrapper, so this reads as the screen's own header rather than a distinct ribbon/card.
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,40 +45,31 @@ fun InsightsTopBar(
     onSelectPayslip: (ParsedPayslip) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = AppDimensions.SpacingTiny,
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = AppDimensions.PaddingMedium, vertical = AppDimensions.SpacingSmall),
     ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = AppDimensions.PaddingMedium, vertical = AppDimensions.SpacingSmall),
-        ) {
-            Text(
-                text = AppStrings.navigationInsights,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Row(
-                modifier = Modifier.padding(top = AppDimensions.SpacingSmall),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                MonthSelectorDropdown(
-                    payslips = payslips,
-                    selected = selected,
-                    onSelectPayslip = onSelectPayslip,
-                )
-            }
-            Text(
-                text = InsightsStrings.heroSubtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = AppDimensions.SpacingTiny),
-            )
-        }
+        Text(
+            text = AppStrings.navigationInsights,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Spacer(modifier = Modifier.height(AppDimensions.SpacingTiny))
+        Text(
+            text = InsightsStrings.heroSubtitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(AppDimensions.SpacingLarge))
+        MonthSelectorDropdown(
+            payslips = payslips,
+            selected = selected,
+            onSelectPayslip = onSelectPayslip,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 
@@ -101,12 +97,17 @@ private fun MonthSelectorDropdown(
             label = {
                 Text(
                     text = "${selected.monthName} ${selected.year}",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = AppDimensions.SpacingMedium),
                 )
             },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
-            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
+            colors = monthSelectorChipColors(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
         )
         ExposedDropdownMenu(
             expanded = dropdownExpanded,
@@ -124,6 +125,19 @@ private fun MonthSelectorDropdown(
         }
     }
 }
+
+@Composable
+private fun monthSelectorChipColors() =
+    FilterChipDefaults.filterChipColors(
+        selectedContainerColor =
+            if (isSystemInDarkTheme()) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            } else {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f)
+            },
+        selectedLabelColor = MaterialTheme.colorScheme.onSurface,
+        selectedTrailingIconColor = MaterialTheme.colorScheme.onSurface,
+    )
 
 // ── Delta formatting (shared by MonthlySnapshot's Pay Health chip) ──────────
 

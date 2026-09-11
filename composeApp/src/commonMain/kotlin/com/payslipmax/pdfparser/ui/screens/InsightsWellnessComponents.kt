@@ -24,10 +24,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.payslipmax.pdfparser.domain.ParsedPayslip
 import com.payslipmax.pdfparser.ui.theme.AppDimensions
+import com.payslipmax.pdfparser.ui.theme.AppStrings
 import com.payslipmax.pdfparser.ui.theme.InsightsStrings
 import kotlin.math.abs
 
-// ── Top bar: month selector ──────────────────────────────────────────────────
+// ── Top bar: hero title/subtext + month selector ─────────────────────────────
 // Pay Health now surfaces only as the expandable chip inside MonthlySnapshot (D-approved: single
 // surface for the score) — the top-bar pill was removed in the Phase 4 redesign wiring.
 
@@ -44,17 +45,33 @@ fun InsightsTopBar(
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = AppDimensions.SpacingTiny,
     ) {
-        Row(
+        Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = AppDimensions.PaddingMedium, vertical = AppDimensions.SpacingSmall),
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            MonthSelectorDropdown(
-                payslips = payslips,
-                selected = selected,
-                onSelectPayslip = onSelectPayslip,
+            Text(
+                text = AppStrings.navigationInsights,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Row(
+                modifier = Modifier.padding(top = AppDimensions.SpacingSmall),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                MonthSelectorDropdown(
+                    payslips = payslips,
+                    selected = selected,
+                    onSelectPayslip = onSelectPayslip,
+                )
+            }
+            Text(
+                text = InsightsStrings.heroSubtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = AppDimensions.SpacingTiny),
             )
         }
     }

@@ -75,3 +75,14 @@ iosApp/iosApp/*.litertlm
 
 iosApp/iosApp.xcodeproj/project.xcworkspace/contents.xcworkspacedata
 iosApp/iosApp.xcodeproj/project.xcworkspace/xcuserdata/sunil.xcuserdatad/UserInterfaceState.xcuserstate
+iosApp/iosApp.xcodeproj/project.xcworkspace/xcuserdata/sunil.xcuserdatad/UserInterfaceState.xcuserstate
+
+# fastlane — App Store Connect API credentials and generated reports, never committed
+# (the .p8 key itself lives outside the repo entirely, at ~/.appstoreconnect/private_keys/)
+iosApp/fastlane/.env
+iosApp/fastlane/report.xml
+iosApp/fastlane/Preview.html
+iosApp/fastlane/screenshots/
+iosApp/fastlane/test_output/
+iosApp/fastlane/README.md
+*.p8

@@ -1,0 +1,34 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Authenticate against the App Store Connect API (no Apple ID/password prompts)"
+  lane :asc_api_key do
+    app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: File.expand_path(ENV["ASC_KEY_FILEPATH"]),
+      in_house: false
+    )
+  end
+
+  desc "Show App Store version review status (e.g. v1.1.1 In Review / Approved / Rejected)"
+  lane :review_status do
+    asc_api_key
+    app = Spaceship::ConnectAPI::App.find(CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier))
+    versions = app.get_app_store_versions(includes: "appStoreVersionSubmission")
+    versions.first(5).each do |v|
+      UI.message("v#{v.version_string} — #{v.app_store_state}")
+    end
+  end
+
+  desc "List current TestFlight builds and their processing/review state"
+  lane :testflight_builds do
+    asc_api_key
+    builds = Spaceship::ConnectAPI::Build.all(
+      app_id: Spaceship::ConnectAPI::App.find(CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)).id
+    )
+    builds.first(10).each do |b|
+      UI.message("#{b.version} (#{b.app_version}) — processing: #{b.processing_state}")
+    end
+  end
+end

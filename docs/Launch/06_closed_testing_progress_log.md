@@ -1,9 +1,12 @@
-# Closed Testing Progress Log (Android v1.0)
+# Internal & Closed Testing Progress Log (Android v1.0)
 
-Running record of what changed in each Play Console closed-testing release, kept so the
-14-day-mandatory-testing final submission report (the one justifying to Google reviewers why the
-app should be approved for production) can cite concrete, dated evidence instead of being
-reconstructed from memory. Update this file at every release bump — don't batch it at the end.
+Running record of what changed in each Play Console release — Internal testing and Closed testing
+tracks alike — kept so the 14-day-mandatory-testing final submission report (the one justifying to
+Google reviewers why the app should be approved for production) can cite concrete, dated evidence
+instead of being reconstructed from memory. Update this file at every release bump — don't batch it
+at the end. Releases typically land on Internal testing first (fast, small-panel verification) and
+are promoted to Closed testing once verified; the 14-day mandatory-testing clock applies only to the
+Closed testing track, so each release's status line below states which track it's actually on.
 
 ## Status snapshot (as of 2026-09-09, post-upload, symbolication-verified)
 
@@ -11,6 +14,9 @@ reconstructed from memory. Update this file at every release bump — don't batc
 - **Live release:** `8 (1.0.0)` — versionCode 8, published via full rollout on 2026-09-09 20:12
   (Play Console Submission ID 6, submitted 19:49, published 20:12). Release name in Console:
   "8 (1.0.0) - R8 keep-rule hardening".
+- **Queued behind this, on a separate track:** `9 (1.0.0)` is live on **Internal testing** (not
+  Closed testing) as of 2026-09-10 20:46 — see versionCode 9 entry below for what it contains and
+  why it hasn't been promoted yet. `10 (1.0.0)` is in progress on top of it, not yet built.
 - **Testers:** 25/25 opted in (third-party tester panel, "Private Testing Pro" plan). Mandatory
   period tracker showed Day 2 of 16 as of the v8 upload.
 - **Reports:** 0/3 ready as of the v8 upload.
@@ -110,14 +116,23 @@ explicitly in the final report as evidence of the testing rigor, not just as a f
 **Status:** uploaded and published. See the status snapshot above for pre-upload verification
 detail and the Play Console bundle-diff numbers confirming the shrink actually worked.
 
-### versionCode 9 (in progress, not yet submitted) — post-v8 iterative UX fixes
+### versionCode 9 — released to Internal testing 2026-09-10 20:46, awaiting promotion to Closed testing
 Commits: `bd0f2c4` (History screen ledger toggle affordance), `c80768f` (Digital Replica edit button label).
 
 **What this means in plain terms:** two discoverability fixes discovered post-v8 during device testing:
 - **History ledger toggle (bd0f2c4):** The "Historical Ledger Table" header row's expand/collapse control was only tappable on the small chevron icon, not the full row like the year ribbons below it. Fixed by making the entire row clickable (matching the year-header pattern), replacing the text-glyph chevron with Material Icons, and adding `contentDescription` strings for accessibility. Covered by new regression test `HistoricalLedgerCardUiTest.kt` verifying the whole row toggles expansion.
 - **Digital Replica edit affordance (c80768f):** The edit/cancel button in the Payslip Digital Replica header was a bare pencil icon with no label, making its purpose (correction mode) invisible to users scanning the screen for how to fix wrong values. Fixed by stacking an "Edit"/"Cancel" label directly below the pencil icon (matching the bottom-nav icon-above-label convention) and updating the subtitle to name the action: "Tap a code for details · Edit to fix a wrong value". Updated tests to target the visible label instead of the now-hidden content description.
 
-**Rationale for v9:** both fixes are pure UI/UX improvements (no logic changes, no risk to parsing/data) and directly address discoverability issues identified during closed-testing device review. Releasing them as part of v9 before Day 14 keeps the app feeling responsive to tester feedback and demonstrates iterative polish in the final submission report.
+Note: `9fa3347` (iOS Gemma model delivery switch to On-Demand Resources) landed on the same branch around this time but is iOS-only with no Android version-code correlate — it does not appear in this Android release log by design.
+
+**Rationale for v9:** both fixes are pure UI/UX improvements (no logic changes, no risk to parsing/data) and directly address discoverability issues identified during closed-testing device review. Releasing them keeps the app feeling responsive to tester feedback and demonstrates iterative polish in the final submission report.
+
+**Status:** Released to the **Internal testing** track only (Play Console: "Available to internal testers," 1 version code, released Sep 10, 2026, 8:46 PM). **Not yet promoted to Closed testing** — Closed testing's latest release remains versionCode 8 (see status snapshot above); the 14-day mandatory-testing clock referenced in that snapshot is still running against v8, not v9. Promote to Closed testing once internal verification of v9 completes.
+
+### versionCode 10 (in progress, not yet built) — Insights hero + further UX polish
+Commits so far: `0122253` (Insights screen hero: "Insights" title + month-picker ribbon + "Know your finances well" subtext, matching the Dashboard/History/Settings header pattern — Insights was the only main-tab screen missing a hero).
+
+**Status:** In progress on the same branch. More changes are planned before this is built and pushed to Internal testing; the push itself is queued behind v9's promotion from Internal testing to Closed testing (avoiding two releases in flight on different tracks at once).
 
 ## What still needs to happen before the Day-14 final submission
 

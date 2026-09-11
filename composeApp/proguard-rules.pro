@@ -37,5 +37,4 @@
 -dontwarn org.slf4j.impl.**
 
 # 9. Firebase Crashlytics & Telemetry
--keepclassmembers class com.google.firebase.crashlytics.** { *; }
 -dontwarn com.google.firebase.crashlytics.**

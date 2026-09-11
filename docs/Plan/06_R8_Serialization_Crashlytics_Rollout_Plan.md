@@ -29,7 +29,7 @@ every phase below**, not `./gradlew check`.
 
 ---
 
-## Phase 9 — Baseline capture (no commit)
+## Phase 9 — Baseline capture (no commit) — ✅ DONE (2026-09-11)
 
 Purpose: establish a known-good "before" state to compare against, and a rollback point.
 
@@ -44,11 +44,19 @@ Purpose: establish a known-good "before" state to compare against, and a rollbac
 **Exit criteria**: baseline release build succeeds; baseline crash appears correctly in Crashlytics.
 **Phase Handoff**: no tech debt (no code change this phase); build confirmed green.
 
+**Result**: `versionCode 10` release build succeeded; `mapping.txt` archived
+(70,508,186-byte baseline APK). On-device via the already-live Play Internal testing install
+(installerPackageName=com.android.vending, integrity check passing): force-stop + relaunch proved
+Room read-back survives a fresh process (multi-month dashboard reloaded correctly, no
+`SerializationException`). Forced test crash (`PayslipMax Test Crash: Observability Verification`)
+confirmed correctly symbolicated in the Crashlytics console (readable
+`DeveloperSandboxSectionKt.DeveloperSandboxSection$lambda$0$2$0`, not raw `r8-map-id-...` symbols).
+
 ---
 
-## Phase 10 — Remove redundant kotlinx.serialization keep rules
+## Phase 10 — Remove redundant kotlinx.serialization keep rules — ✅ DONE (2026-09-11)
 
-**Commit**: `chore(r8): remove redundant kotlinx.serialization keep rules (Phase 10)`
+**Commit**: `chore(r8): remove redundant kotlinx.serialization keep rules (Phase 10)` (`0b985c9`)
 
 1. Edit `composeApp/proguard-rules.pro`, delete the 4 blocks under "Kotlinx Serialization":
    - `-keepclassmembers class * implements kotlinx.serialization.KSerializer { *** INSTANCE; }`
@@ -67,11 +75,20 @@ Purpose: establish a known-good "before" state to compare against, and a rollbac
 **Phase Handoff**: tech debt = none (pure deletion); build green; device verification passed
 (record which two grammar eras were tested).
 
+**Result**: `check` and `assembleRelease` both green. **Device verification for this specific
+change is explicitly deferred to Phase 12**, not skipped — Play refuses a second Internal testing
+upload at the already-consumed `versionCode 10`, so an intermediate Phase-10-only build cannot be
+installed on the test device (the release-only `AndroidAppIntegrityChecker` install-source gate
+blocks any non-Play install regardless of `versionCode`). User decision 2026-09-11: verify Phase 10
+and 11 together on the real `versionCode 11` shipping artifact at Phase 12 rather than burn a
+versionCode on a non-shipping intermediate build. Recorded here per the fail-loud rule so this is
+never mistaken for a completed device check.
+
 ---
 
-## Phase 11 — Remove redundant Firebase Crashlytics keep rule
+## Phase 11 — Remove redundant Firebase Crashlytics keep rule — ✅ DONE (2026-09-11)
 
-**Commit**: `chore(r8): remove redundant Firebase Crashlytics keep rule (Phase 11)`
+**Commit**: `chore(r8): remove redundant Firebase Crashlytics keep rule (Phase 11)` (`1834c67`)
 
 1. Edit `composeApp/proguard-rules.pro`, delete:
    - `-keepclassmembers class com.google.firebase.crashlytics.** { *; }`
@@ -87,8 +104,29 @@ Purpose: establish a known-good "before" state to compare against, and a rollbac
 **Exit criteria**: forced test crash captured and correctly symbolicated on the new build.
 **Phase Handoff**: tech debt = none; build green; crash-capture verification passed.
 
+**Result**: `assembleRelease` green. Device verification deferred to Phase 12 alongside Phase 10,
+same rationale as above.
+
 If either Phase 10 or Phase 11 verification fails, bisect by reverting only that phase's commit —
 they are independent changes to independent rule blocks.
+
+**Measured size impact (Phase 9 baseline vs. post-Phase-11 build, both `versionCode 10`-config
+artifacts)**: APK 70,508,186 → 70,442,383 bytes, **≈65.8 KB smaller (~0.09%)**. Modest and expected —
+these were narrow rules pinning a handful of serialization-support and Crashlytics classes that
+library-consumer rules already covered functionally, not blanket keeps unlocking large dead-code
+removal. A materially bigger size win would come from the deferred, higher-risk findings #5–#7
+(Koin annotation scope, global native-methods keep, LiteRT wildcard keep) — intentionally out of
+scope for this plan.
+
+---
+
+## ⏸ Paused after Phase 11 (2026-09-11)
+
+Phase 10 and Phase 11 are committed and build-verified; their on-device verification is bundled into
+Phase 12 as documented above. **User decision: hold before starting Phase 12 and revisit in
+3–4 days** (i.e. around 2026-09-14/15). Nothing further should proceed on this plan until then —
+resume by re-reading this doc's current state (don't assume it's still accurate) and continuing at
+Phase 12 below.
 
 ---
 
@@ -99,7 +137,8 @@ they are independent changes to independent rule blocks.
 > plan's proguard-rule changes). versionCode 10 was then consumed by a further UI-only closed-testing
 > release, also unrelated to this plan. This plan's proguard-rule changes (Phase 10 + Phase 11) will
 > therefore ship as **versionCode 11**, not 9. The step below is updated accordingly; no other phase
-> in this plan changes.
+> in this plan changes. Phase 10 and Phase 11's deferred device verification (see those phases'
+> Result notes) happens here, on this exact artifact.
 
 **Commit**: `chore(release): bump versionCode to 11 for R8 keep-rule release`
 

@@ -31,4 +31,58 @@ platform :ios do
       UI.message("#{b.version} (#{b.app_version}) — processing: #{b.processing_state}")
     end
   end
+
+  desc "Authenticate against the App Store Connect API with the Finance-scoped key (Sales/Trends Reports only)"
+  private_lane :asc_finance_key do
+    app_store_connect_api_key(
+      key_id: ENV["ASC_FINANCE_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: File.expand_path(ENV["ASC_FINANCE_KEY_FILEPATH"]),
+      in_house: false
+    )
+  end
+
+  desc "Print daily install/download units for the last N days (default 30) from Sales Reports"
+  lane :install_counts do |options|
+    require 'net/http'
+    require 'uri'
+    require 'zlib'
+    require 'stringio'
+
+    days = (options[:days] || 30).to_i
+    vendor_number = ENV["ASC_VENDOR_NUMBER"]
+    UI.user_error!("Set ASC_VENDOR_NUMBER in fastlane/.env") if vendor_number.nil? || vendor_number.empty?
+
+    asc_finance_key
+    token = Spaceship::ConnectAPI.token.text
+
+    total_installs = 0
+    (0...days).each do |offset|
+      date = (Date.today - offset).strftime("%Y-%m-%d")
+      uri = URI("https://api.appstoreconnect.apple.com/v1/salesReports")
+      uri.query = URI.encode_www_form(
+        "filter[reportType]" => "SALES",
+        "filter[reportSubType]" => "SUMMARY",
+        "filter[frequency]" => "DAILY",
+        "filter[version]" => "1_0",
+        "filter[vendorNumber]" => vendor_number,
+        "filter[reportDate]" => date
+      )
+      res = Net::HTTP.get_response(uri, { "Authorization" => "Bearer #{token}" })
+      next unless res.code == "200"
+
+      tsv = Zlib::GzipReader.new(StringIO.new(res.body)).read
+      rows = tsv.lines.map { |l| l.chomp.split("\t") }
+      header = rows.shift
+      units_idx = header.index("Units")
+      type_idx = header.index("Product Type Identifier")
+
+      day_installs = rows.select { |r| %w[1 1F 1T].include?(r[type_idx]) }
+                          .sum { |r| r[units_idx].to_i }
+      total_installs += day_installs
+      UI.message("#{date}: #{day_installs} new installs") if day_installs > 0
+    end
+
+    UI.success("Total new installs over last #{days} days: #{total_installs}")
+  end
 end

@@ -129,3 +129,7 @@ only. There is no large free install base to grandfather on Android by the time 
 unlike iOS (which already has real free users from v1.0). Re-evaluate this only if the free
 production window ends up stretching for weeks — if a meaningful Android install base accumulates
 before BillDesk clears, revisit the grandfather-clause question the same way doc 05 flagged for iOS.
+
+## 6. On Branching
+
+We don't need separate branches — that would actually be the wrong fix. The real issue isn't branch structure, it's that FREE_LAUNCH_MODE is currently one shared const val. Split it into two — FREE_LAUNCH_MODE_IOS and FREE_LAUNCH_MODE_ANDROID — both still living in the same commonMain file, same branch, same commit. Each platform's build only reads its own constant, so you can flip iOS to false while Android stays true, from identical source. SSOT is fully preserved — there's still exactly one RevenueCatBillingManager, one entitlement mapping, one gating function; only the release-timing knob is now per-platform instead of global. A temporary release branch (like your existing release/ios-1.0.0-v6) is fine and unrelated to this — what would actually defeat SSOT is a permanent, never-merged platform fork that duplicates billing logic, which nothing here calls for. Make the LaunchFlags split, so as to launch iOS app monetization.

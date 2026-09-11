@@ -94,16 +94,23 @@ they are independent changes to independent rule blocks.
 
 ## Phase 12 — Version bump + release candidate
 
-**Commit**: `chore(release): bump versionCode to 9 for R8 keep-rule release`
+> **Update (2026-09-11)**: versionCode 9 was already consumed by an unrelated UI-fix release
+> (published to Internal testing before Phase 10/11 of this plan started; it carries none of this
+> plan's proguard-rule changes). versionCode 10 was then consumed by a further UI-only closed-testing
+> release, also unrelated to this plan. This plan's proguard-rule changes (Phase 10 + Phase 11) will
+> therefore ship as **versionCode 11**, not 9. The step below is updated accordingly; no other phase
+> in this plan changes.
 
-1. Bump `versionCode` 8 → 9 in `composeApp/build.gradle.kts:168` (mirrors the convention used for
-   the prior R8 pass, `48d2fe6`).
+**Commit**: `chore(release): bump versionCode to 11 for R8 keep-rule release`
+
+1. Bump `versionCode` (whatever it is at the time — currently 10) → 11 in
+   `composeApp/build.gradle.kts:168` (mirrors the convention used for the prior R8 pass, `48d2fe6`).
 2. Full release build: `./gradlew :composeApp:assembleRelease` (or `bundleRelease` if shipping via
    Play App Bundle).
 3. Re-run both device checks from Phase 10 and Phase 11 against this exact build artifact (not the
    intermediate per-phase builds) — this is the artifact that actually ships.
 
-**Exit criteria**: `versionCode 9` release build succeeds; both parse/persist and crash-capture
+**Exit criteria**: `versionCode 11` release build succeeds; both parse/persist and crash-capture
 checks pass on this exact artifact.
 **Phase Handoff**: tech debt = none; build green; both verifications repeated and passing on the
 shipping artifact.

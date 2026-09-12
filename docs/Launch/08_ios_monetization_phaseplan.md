@@ -42,8 +42,12 @@ starts until the previous one is fully green.
   numbers, don't assume").
 - No code changes in this phase. Exit criteria: baseline documented, `v1.1.1` review outcome known.
 
-**Phase Summary**: no tech debt (no code touched). Build/tests: unaffected, still green from
-`v1.1.1`'s own CI run.
+**Phase Summary** (completed 2026-09-12): no tech debt — no code touched. Baseline recorded with
+real data (via new fastlane/App Store Connect API tooling under `iosApp/fastlane/`, added this
+phase instead of manual dashboard checks each time): `v1.1.1` was `WAITING_FOR_REVIEW` at baseline
+(cleared to `READY_FOR_SALE` before Phase 1 started); RevenueCat has no Apple app entry yet (only
+`PayslipMax (Play Store)` exists); 1 real install in the last 60 days. Build/tests unaffected, still
+green from `v1.1.1`'s own CI run.
 
 ---
 
@@ -72,8 +76,14 @@ starts until the previous one is fully green.
 **Exit criteria**: `./gradlew :shared:testDebugUnitTest :composeApp:testDebugUnitTest` green,
 `ktlintCheck` green, app behavior on both platforms unchanged (still fully free).
 
-**Phase Summary template**: tech debt = none expected (mechanical rename + test update); confirm
-100% test pass before Phase 2.
+**Phase Summary** (completed 2026-09-12, commit `8059f04` on `release/ios-1.0.0-v6`): tech debt =
+none — mechanical constant split plus a new `isFreeLaunchModePlatform()` expect/actual (mirroring
+the existing `isDebugBuild()` pattern in the same package), all call sites migrated in the same
+commit (verified via grep, no stale `LaunchFlags.FREE_LAUNCH_MODE` references left). Added a test
+proving the two platform flags are read independently rather than coupled. `:shared:testDebugUnitTest`,
+`:composeApp:testDebugUnitTest`, `ktlintCheck`, the tech-debt/file-size audit, and the iOS framework
+link check are all green (verified manually and re-verified by the pre-commit hook on commit).
+Behavior confirmed unchanged — both flags still `true`.
 
 ---
 

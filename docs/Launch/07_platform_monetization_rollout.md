@@ -5,11 +5,19 @@
 Section 4/5 (Step 4 / "Phase 2") with a platform-decoupled sequencing decision, and reflects the
 current state after [06_closed_testing_progress_log.md](06_closed_testing_progress_log.md).
 
-## 0. Current state (2026-09-11)
+## 0. Current state (2026-09-12)
 
-- **iOS**: `v1.0.0 (3)` free, live in production. `v1.1.0 (3)` (ODR/Gemma-on-device) — **live**, App
-  Review passed and released. `FREE_LAUNCH_MODE` is still `true` on iOS; no monetization work has
-  shipped yet.
+- **iOS**: `v1.1.1` cleared App Review (`READY_FOR_SALE`) on 2026-09-12. Per
+  [08_ios_monetization_phaseplan.md](08_ios_monetization_phaseplan.md) Phase 1 (committed `8059f04`
+  on `release/ios-1.0.0-v6`), `LaunchFlags.FREE_LAUNCH_MODE` is now split into
+  `FREE_LAUNCH_MODE_IOS`/`FREE_LAUNCH_MODE_ANDROID` per Section 2 below — both still `true`, no
+  observable behavior change yet. Business-side blockers for Phase 2 (App Store Connect product
+  creation) are cleared: Paid Apps Agreement, bank account, and both US tax forms (W-8BEN +
+  Certificate of Foreign Status of Beneficial Owner) are all Active as of 2026-09-12. Subscription
+  price tier confirmed at ₹199/yr. RevenueCat has no Apple app entry yet (only the Android app
+  exists) — Phase 3 creates it from scratch. Real install count: 1 in the last 60 days (via the
+  fastlane/App Store Connect API tooling added in Phase 0), confirming the free-to-paid conversion
+  exposure is still minimal.
 - **Android**: Closed testing, `9 (1.0.0)` live on Internal testing (not yet promoted), `8 (1.0.0)`
   is the live Closed testing release, mandatory 14-day window running against v8. Still free by
   policy requirement, not choice.

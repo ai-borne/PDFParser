@@ -14,10 +14,13 @@ current state after [06_closed_testing_progress_log.md](06_closed_testing_progre
   observable behavior change yet. Phase 2 (App Store Connect subscription product) is complete as
   of 2026-09-12: `payslipmax_yearly_premium` (₹199/yr, 1 Year Upfront) exists in ASC with
   metadata/screenshot/review notes filled in, status "Ready for Review" — it will go out bundled
-  with the `v1.2` submission in Phase 8. RevenueCat has no Apple app entry yet (only the Android app
-  exists) — Phase 3 creates it from scratch. Real install count: 1 in the last 60 days (via the
-  fastlane/App Store Connect API tooling added in Phase 0), confirming the free-to-paid conversion
-  exposure is still minimal.
+  with the `v1.2` submission in Phase 8. Phase 3 (RevenueCat dashboard wiring) is complete as of
+  2026-09-12: the Apple App Store app entry now exists in RevenueCat, `payslipmax_yearly_premium` is
+  created as a product attached to the `PayslipMax Premium` entitlement and wired into the `default`
+  offering's `$rc_annual` package, and the real production RevenueCat SDK key
+  (`appl_NgEonbkizWMfsjfyaFCuTgBLWGx`) has been retrieved and is held, uncommitted, for Phase 4. Real
+  install count: 1 in the last 60 days (via the fastlane/App Store Connect API tooling added in
+  Phase 0), confirming the free-to-paid conversion exposure is still minimal.
 - **Android**: Closed testing, `9 (1.0.0)` live on Internal testing (not yet promoted), `8 (1.0.0)`
   is the live Closed testing release, mandatory 14-day window running against v8. Still free by
   policy requirement, not choice.

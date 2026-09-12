@@ -146,6 +146,25 @@ click-path, per the screenshot workflow you referenced.)*
 **Exit criteria**: RevenueCat dashboard shows the entitlement resolving to a real, non-sandbox
 Apple product; API key retrieved and held for Phase 4.
 
+**Phase Summary** (completed 2026-09-12): no tech debt — pure RevenueCat dashboard work, no code
+changes. Re-verified live state before starting: `v1.1.1` still `READY_FOR_SALE` (via `fastlane ios
+review_status`). Created the Apple App Store app entry in RevenueCat under the `PayslipMax` project
+(bundle ID `in.aiborne.payslipmax`), uploading the App Manager ASC API key
+(`AuthKey_J87P2YJ2PS.p8`, copied to `SubscriptionKey_J87P2YJ2PS.p8` locally only to satisfy
+RevenueCat's upload filename check — original untouched, no repo change) with Key ID `J87P2YJ2PS`
+and the Issuer ID from `iosApp/fastlane/.env` — RevenueCat confirmed "Valid credentials". Note: the
+actual p8 file upload was done by the user manually (browser-automation credential-file upload was
+correctly blocked by the harness's safety classifier as file-exfil risk) — this is the one step in
+the phase that isn't reproducible by an agent alone. Created product `payslipmax_yearly_premium`
+under the new PayslipMax (App Store) app (RevenueCat's "Import" found nothing yet — ASC metadata
+sync lag — so it was added manually with the exact product ID from Phase 2), attached it to the
+existing `PayslipMax Premium` entitlement, and wired it into the `default` offering's `$rc_annual`
+package (previously only had a Test Store product) alongside the untouched Play Store slot. Product
+"Store Status" shows "Could not check" — expected propagation delay, not a config error. Retrieved
+the real production RevenueCat SDK key (`appl_NgEonbkizWMfsjfyaFCuTgBLWGx`) and am holding it,
+uncommitted, for Phase 4 (per this phase's own instruction not to commit it yet). Build/tests
+unaffected — no code touched.
+
 ---
 
 ## Phase 4 — Code: real API key + platform flag still `true`

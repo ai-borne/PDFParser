@@ -105,6 +105,24 @@ Behavior confirmed unchanged — both flags still `true`.
 
 **Exit criteria**: subscription product shows "Ready to Submit" (or better) in ASC.
 
+**Phase Summary** (completed 2026-09-12): no tech debt — pure ASC console work, no code changes.
+Re-verified live state before starting: `v1.1.1` still `READY_FOR_SALE` (via `fastlane ios
+review_status`), Paid Apps Agreement still Active in ASC → Business → Agreements. Created
+subscription group `PayslipMax Yearly Premium` (group ID `22378910`) and subscription
+`PayslipMax Yearly Premium` (product ID `payslipmax_yearly_premium`, 1 Year Upfront duration,
+₹199.00/year confirmed against the ASC-generated territory price list — the ₹199 India tier maps to
+$1.99 USD as the base equivalent). Added English (U.S.) localization (display name "PayslipMax
+Premium", description) and a review screenshot of the actual in-app paywall (captured by
+temporarily flipping `FREE_LAUNCH_MODE_IOS` to `false` in a local, uncommitted build — confirmed via
+`git diff` that the flag was reverted to `true` before ending the session, no code change persisted)
+run on iPhone 17 Pro Simulator via `idb`, navigating Settings → Upgrade to PayslipMax Premium.
+Added review notes describing the subscription, its unlock path, and confirming Restore Purchases
+presence. Subscription status is **"Ready for Review"** (ASC's current label for what this doc
+calls "Ready to Submit") — confirmed via the "Item Ready to Submit" panel; ASC correctly refuses a
+standalone submission ("Your first auto-renewable subscription must be submitted with a new app
+version") since subscriptions can only go out bundled with an app version submission, which is
+Phase 8's job, not this phase's. Build/tests unaffected — no code touched by the end of the phase.
+
 ---
 
 ## Phase 3 — RevenueCat dashboard: wire the Apple app

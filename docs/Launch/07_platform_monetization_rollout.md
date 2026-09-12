@@ -11,10 +11,10 @@ current state after [06_closed_testing_progress_log.md](06_closed_testing_progre
   [08_ios_monetization_phaseplan.md](08_ios_monetization_phaseplan.md) Phase 1 (committed `8059f04`
   on `release/ios-1.0.0-v6`), `LaunchFlags.FREE_LAUNCH_MODE` is now split into
   `FREE_LAUNCH_MODE_IOS`/`FREE_LAUNCH_MODE_ANDROID` per Section 2 below — both still `true`, no
-  observable behavior change yet. Business-side blockers for Phase 2 (App Store Connect product
-  creation) are cleared: Paid Apps Agreement, bank account, and both US tax forms (W-8BEN +
-  Certificate of Foreign Status of Beneficial Owner) are all Active as of 2026-09-12. Subscription
-  price tier confirmed at ₹199/yr. RevenueCat has no Apple app entry yet (only the Android app
+  observable behavior change yet. Phase 2 (App Store Connect subscription product) is complete as
+  of 2026-09-12: `payslipmax_yearly_premium` (₹199/yr, 1 Year Upfront) exists in ASC with
+  metadata/screenshot/review notes filled in, status "Ready for Review" — it will go out bundled
+  with the `v1.2` submission in Phase 8. RevenueCat has no Apple app entry yet (only the Android app
   exists) — Phase 3 creates it from scratch. Real install count: 1 in the last 60 days (via the
   fastlane/App Store Connect API tooling added in Phase 0), confirming the free-to-paid conversion
   exposure is still minimal.

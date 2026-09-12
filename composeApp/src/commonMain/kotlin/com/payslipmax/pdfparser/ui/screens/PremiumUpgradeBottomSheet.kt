@@ -11,6 +11,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,6 +22,28 @@ import androidx.compose.ui.Modifier
 import com.payslipmax.pdfparser.billing.PurchaseResult
 import com.payslipmax.pdfparser.ui.theme.AppDimensions
 import com.payslipmax.pdfparser.ui.theme.AppStrings
+import kotlinx.coroutines.delay
+
+/**
+ * How long a success confirmation stays on screen before the sheet closes itself.
+ *
+ * Both success branches used to set the message and call `onDismissRequest()` in the same breath,
+ * so the confirmation rendered into a sheet already being torn down — a *successful* purchase or
+ * restore showed a spinner, then silence (Phase 7 debt, `docs/Launch/08_ios_monetization_phaseplan.md`).
+ * That actively misleads a user, and misled Phase 7's own testing.
+ */
+internal const val SUCCESS_FEEDBACK_VISIBLE_MS = 1_500L
+
+/**
+ * How long the sheet stays open after [outcome] so its message can actually be read, or null to
+ * stay open indefinitely (the user closes it). Pure and Compose-free, like the outcome mapping
+ * above, so the rule is unit-testable without standing up a modal-sheet window.
+ */
+internal fun dismissDelayMsFor(outcome: PurchaseSheetOutcome): Long? =
+    when (outcome) {
+        is PurchaseSheetOutcome.Success -> SUCCESS_FEEDBACK_VISIBLE_MS
+        is PurchaseSheetOutcome.StayOpen, is PurchaseSheetOutcome.ShowError -> null
+    }
 
 /** What the upgrade sheet should do once a [PurchaseResult] comes back — pure, unit-testable without Compose. */
 internal sealed interface PurchaseSheetOutcome {
@@ -52,12 +75,20 @@ fun PremiumUpgradeBottomSheet(
     onRestoreClick: (onResult: (PurchaseResult) -> Unit) -> Unit = {},
     onTermsClick: (() -> Unit)? = null,
     onPrivacyClick: (() -> Unit)? = null,
-    price: String = AppStrings.settingsPremiumPlanPrice,
+    price: String? = null,
     modifier: Modifier = Modifier,
 ) {
     var isPurchasing by rememberSaveable { mutableStateOf(false) }
     var isRestoring by rememberSaveable { mutableStateOf(false) }
     var feedbackStatus by remember { mutableStateOf<BackupStatus?>(null) }
+    var pendingDismissDelayMs by remember { mutableStateOf<Long?>(null) }
+
+    LaunchedEffect(pendingDismissDelayMs) {
+        pendingDismissDelayMs?.let { delayMs ->
+            delay(delayMs)
+            onDismissRequest()
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -78,7 +109,7 @@ fun PremiumUpgradeBottomSheet(
                     when (val outcome = purchaseSheetOutcome(result)) {
                         is PurchaseSheetOutcome.Success -> {
                             feedbackStatus = BackupStatus(outcome.message, isSuccess = true)
-                            onDismissRequest()
+                            pendingDismissDelayMs = dismissDelayMsFor(outcome)
                         }
                         is PurchaseSheetOutcome.StayOpen -> Unit
                         is PurchaseSheetOutcome.ShowError -> {
@@ -96,7 +127,7 @@ fun PremiumUpgradeBottomSheet(
                     when (val outcome = restoreSheetOutcome(result)) {
                         is PurchaseSheetOutcome.Success -> {
                             feedbackStatus = BackupStatus(outcome.message, isSuccess = true)
-                            onDismissRequest()
+                            pendingDismissDelayMs = dismissDelayMsFor(outcome)
                         }
                         is PurchaseSheetOutcome.StayOpen -> Unit
                         is PurchaseSheetOutcome.ShowError -> {
@@ -114,7 +145,7 @@ fun PremiumUpgradeBottomSheet(
 
 @Composable
 private fun UpgradeSheetContent(
-    price: String,
+    price: String?,
     isPurchasing: Boolean,
     isRestoring: Boolean,
     feedbackStatus: BackupStatus?,
@@ -140,6 +171,7 @@ private fun UpgradeSheetContent(
         UpgradeActionsSection(
             isPurchasing = isPurchasing,
             isRestoring = isRestoring,
+            canPurchase = price != null,
             onUnlockClick = onUnlockClick,
             onRestoreClick = onRestoreClick,
             onCloseClick = onCloseClick,

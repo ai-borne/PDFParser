@@ -16,7 +16,7 @@ import com.payslipmax.pdfparser.ui.theme.AppStrings
 fun PremiumSettingsCard(
     isPremiumEnabled: Boolean,
     onUpgradePrompt: () -> Unit,
-    price: String = AppStrings.settingsPremiumPlanPrice,
+    price: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val isDark = androidx.compose.foundation.isSystemInDarkTheme()
@@ -44,7 +44,7 @@ fun PremiumSettingsCard(
 fun PremiumSettingsCardContentRow(
     isPremiumEnabled: Boolean,
     onUpgradePrompt: () -> Unit,
-    price: String = AppStrings.settingsPremiumPlanPrice,
+    price: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val isDark = androidx.compose.foundation.isSystemInDarkTheme()
@@ -95,7 +95,7 @@ private fun getPremiumCardBorderColor(isPremiumEnabled: Boolean) =
 @Composable
 private fun PremiumCardContent(
     isPremiumEnabled: Boolean,
-    price: String,
+    price: String?,
 ) {
     Row(
         modifier =
@@ -129,7 +129,7 @@ private fun PremiumCardContent(
 @Composable
 private fun PremiumTextDetails(
     isPremiumEnabled: Boolean,
-    price: String,
+    price: String?,
 ) {
     Column {
         Text(
@@ -143,8 +143,10 @@ private fun PremiumTextDetails(
             text =
                 if (isPremiumEnabled) {
                     AppStrings.settingsPremiumPlanSubscribedNote
-                } else {
+                } else if (price != null) {
                     "${AppStrings.settingsPremiumPlanUpgradeSubtitlePrefix} ($price)"
+                } else {
+                    AppStrings.settingsPremiumPlanUpgradeSubtitlePrefix
                 },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

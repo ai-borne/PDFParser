@@ -10,6 +10,8 @@ package com.payslipmax.pdfparser.subscription
  * [isFreeLaunchModePlatform] rather than either constant directly.
  */
 object LaunchFlags {
-    const val FREE_LAUNCH_MODE_IOS: Boolean = true
+    // Flipped false in Phase 8 (docs/Launch/08_ios_monetization_phaseplan.md) — iOS monetization
+    // is live from v1.2: gates now follow the real RevenueCat entitlement.
+    const val FREE_LAUNCH_MODE_IOS: Boolean = false
     const val FREE_LAUNCH_MODE_ANDROID: Boolean = true
 }

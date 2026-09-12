@@ -85,4 +85,99 @@ platform :ios do
 
     UI.success("Total new installs over last #{days} days: #{total_installs}")
   end
+
+  desc "Show the app's subscription groups, their localizations, and each subscription's state"
+  lane :subscription_status do
+    asc_api_key
+    app = Spaceship::ConnectAPI::App.find(CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier))
+    groups = asc_get("/v1/apps/#{app.id}/subscriptionGroups")["data"] || []
+    UI.user_error!("No subscription groups found for this app") if groups.empty?
+
+    groups.each do |g|
+      UI.message("group #{g['id']} — referenceName: #{g['attributes']['referenceName']}")
+      locs = asc_get("/v1/subscriptionGroups/#{g['id']}/subscriptionGroupLocalizations")["data"] || []
+      if locs.empty?
+        UI.important("  group localizations: NONE — submission will be blocked")
+      else
+        locs.each { |l| UI.success("  group localization #{l['attributes']['locale']}: name=#{l['attributes']['name']} state=#{l['attributes']['state']}") }
+      end
+      subs = asc_get("/v1/subscriptionGroups/#{g['id']}/subscriptions")["data"] || []
+      subs.each { |s| UI.message("  subscription #{s['attributes']['productId']} — state: #{s['attributes']['state']}") }
+    end
+  end
+
+  desc "Create a subscription-group localization (required before a subscription can be submitted)"
+  lane :add_subscription_group_localization do |options|
+    asc_api_key
+    group_id = options[:group_id] or UI.user_error!("Pass group_id:")
+    name = options[:name] or UI.user_error!("Pass name: (the group display name users see)")
+    locale = options[:locale] || "en-US"
+
+    body = {
+      "data" => {
+        "type" => "subscriptionGroupLocalizations",
+        "attributes" => { "name" => name, "locale" => locale },
+        "relationships" => {
+          "subscriptionGroup" => { "data" => { "type" => "subscriptionGroups", "id" => group_id.to_s } }
+        }
+      }
+    }
+    res = asc_post("/v1/subscriptionGroupLocalizations", body)
+    UI.success("Created group localization #{locale}: #{res['data']['attributes']['name']} (state: #{res['data']['attributes']['state']})")
+  end
+
+  # --- raw App Store Connect API helpers (spaceship has no model for subscription groups) ---
+
+  def asc_request(method, path, body = nil)
+    require 'net/http'
+    require 'uri'
+    require 'json'
+    uri = URI("https://api.appstoreconnect.apple.com#{path}")
+    req = (method == :post ? Net::HTTP::Post : Net::HTTP::Get).new(uri)
+    req["Authorization"] = "Bearer #{Spaceship::ConnectAPI.token.text}"
+    req["Content-Type"] = "application/json"
+    req.body = body.to_json if body
+    res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+    parsed = res.body.to_s.empty? ? {} : JSON.parse(res.body)
+    unless res.code.to_i.between?(200, 299)
+      errors = (parsed["errors"] || []).map { |e| "#{e['title']}: #{e['detail']}" }.join("; ")
+      UI.user_error!("ASC API #{method.to_s.upcase} #{path} failed (#{res.code}): #{errors}")
+    end
+    parsed
+  end
+
+  def asc_get(path)
+    asc_request(:get, path)
+  end
+
+  def asc_post(path, body)
+    asc_request(:post, path, body)
+  end
+
+  desc "Show one subscription's localizations and price points (diagnosing MISSING_METADATA)"
+  lane :subscription_detail do |options|
+    asc_api_key
+    app = Spaceship::ConnectAPI::App.find(CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier))
+    groups = asc_get("/v1/apps/#{app.id}/subscriptionGroups")["data"] || []
+    groups.each do |g|
+      subs = asc_get("/v1/subscriptionGroups/#{g['id']}/subscriptions")["data"] || []
+      subs.each do |s|
+        UI.message("subscription #{s['id']} #{s['attributes']['productId']} — state=#{s['attributes']['state']} name=#{s['attributes']['name']} period=#{s['attributes']['subscriptionPeriod']}")
+        locs = asc_get("/v1/subscriptions/#{s['id']}/subscriptionLocalizations")["data"] || []
+        locs.each { |l| UI.success("  loc #{l['attributes']['locale']}: name=#{l['attributes']['name']} desc=#{l['attributes']['description']} state=#{l['attributes']['state']}") }
+        prices = asc_get("/v1/subscriptions/#{s['id']}/prices?limit=5")["data"] || []
+        UI.message("  price entries: #{prices.length}")
+        avail = asc_get("/v1/subscriptions/#{s['id']}/availability") rescue nil
+        UI.message("  availability: #{avail && avail['data'] ? avail['data']['attributes'] : 'none'}")
+      end
+    end
+  end
+
+  desc "Raw GET against any ASC API path (debugging)"
+  lane :asc_raw do |options|
+    asc_api_key
+    require 'json'
+    UI.message(JSON.pretty_generate(asc_get(options[:path])))
+  end
+
 end

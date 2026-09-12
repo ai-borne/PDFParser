@@ -15,6 +15,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -170,8 +171,11 @@ class PayslipViewModelBillingTest {
             assertEquals("₹199 / year", viewModel.premiumPriceState.value)
         }
 
+    // The store is the only source of truth for price. If it returns nothing, the app must say so
+    // rather than invent a number — a hardcoded fallback made a dead product render as a healthy
+    // paywall, which is how a user could be charged for a product that never resolved.
     @Test
-    fun premiumPriceState_keeps_fallback_when_billingManager_price_unavailable() =
+    fun premiumPriceState_stays_null_when_billingManager_price_unavailable() =
         runTest {
             fakeBillingManager.fakeFormattedPrice = null
             val repository =
@@ -189,6 +193,6 @@ class PayslipViewModelBillingTest {
 
             testDispatcher.scheduler.advanceUntilIdle()
 
-            assertEquals(com.payslipmax.pdfparser.ui.theme.AppStrings.settingsPremiumPlanPrice, viewModel.premiumPriceState.value)
+            assertNull(viewModel.premiumPriceState.value)
         }
 }

@@ -79,23 +79,28 @@ internal fun UpgradeBenefitsSection() {
     }
 }
 
+/** [price] is null until the store returns a live one — the billing note is then suppressed too,
+ *  because an auto-renewing-yearly promise next to no price is exactly the dead-product-as-healthy-
+ *  paywall the fallback price used to cause. */
 @Composable
-internal fun UpgradePricingSection(price: String) {
+internal fun UpgradePricingSection(price: String?) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(AppDimensions.SpacingTwo),
     ) {
         Text(
-            text = price,
+            text = price ?: AppStrings.settingsPremiumPlanPriceUnavailable,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        Text(
-            text = AppStrings.settingsPremiumPlanBillingNote,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (price != null) {
+            Text(
+                text = AppStrings.settingsPremiumPlanBillingNote,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -103,6 +108,7 @@ internal fun UpgradePricingSection(price: String) {
 internal fun UpgradeActionsSection(
     isPurchasing: Boolean,
     isRestoring: Boolean,
+    canPurchase: Boolean,
     onUnlockClick: () -> Unit,
     onRestoreClick: () -> Unit,
     onCloseClick: () -> Unit,
@@ -114,7 +120,7 @@ internal fun UpgradeActionsSection(
     ) {
         Button(
             onClick = onUnlockClick,
-            enabled = !isBusy,
+            enabled = !isBusy && canPurchase,
             modifier = Modifier.fillMaxWidth(),
         ) {
             if (isPurchasing) {

@@ -30,7 +30,7 @@ fun LockedPremiumHubCard(
     state: InsightsState,
     smartInsights: List<InsightUiModel>,
     onUpgradeClick: () -> Unit,
-    price: String = InsightsStrings.premiumIntelligencePrice,
+    price: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val anomalyDisplay =
@@ -67,7 +67,7 @@ fun LazyListScope.insightsPremiumItems(
     onToolsExpandClick: () -> Unit,
     onShowUpgradeSheet: () -> Unit,
     onNavigateTo: (Screen) -> Unit,
-    price: String = InsightsStrings.premiumIntelligencePrice,
+    price: String? = null,
 ) {
     if (!isPremium) {
         item(key = "locked_premium_hub", contentType = "locked_premium_hub") {
@@ -86,7 +86,7 @@ fun LazyListScope.insightsPremiumItems(
 }
 
 @Composable
-private fun PremiumHubHeader(price: String) {
+private fun PremiumHubHeader(price: String?) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -99,7 +99,7 @@ private fun PremiumHubHeader(price: String) {
             color = MaterialTheme.colorScheme.primary,
         )
         Text(
-            text = price,
+            text = price ?: AppStrings.settingsPremiumPlanPriceUnavailable,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.secondary,

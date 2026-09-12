@@ -116,8 +116,10 @@ object AppStrings {
     const val aiRegenerateIcon = "🔄"
     const val settingsPremiumPlanDesc = "Unlock personalization & CA-grade tax advice"
 
-    // Static fallback shown until PayslipViewModel.premiumPriceState resolves the live store price.
-    const val settingsPremiumPlanPrice = "₹199 / Year"
+    // Shown in place of a price when the store never returns one, so a dead product can never
+    // render as a healthy paywall. There is intentionally no hardcoded price constant here — the
+    // live store price (PayslipViewModel.premiumPriceState) is the single source of truth.
+    const val settingsPremiumPlanPriceUnavailable = "Pricing unavailable"
     const val settingsPremiumPlanBillingNote = "Yearly Auto-Renewing Subscription"
     const val settingsPremiumPlanActive = "Premium Plan Activated"
     const val settingsPremiumPlanUpgradeTitle = "Upgrade to PayslipMax Premium"

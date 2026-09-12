@@ -52,10 +52,13 @@ class PayslipViewModel(
         financialIntelligenceRepository?.getAllRepresentationDrafts()?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()) ?: MutableStateFlow(emptyList())
 
     // SSOT for the Premium yearly price shown across the upgrade sheet, settings card, and Insights
-    // hub. Starts at the static AppStrings fallback and is replaced by the live store price once
-    // RevenueCat resolves it (never blocks first paint on a network round-trip).
-    internal val _premiumPriceState = MutableStateFlow(AppStrings.settingsPremiumPlanPrice)
-    val premiumPriceState: StateFlow<String> = _premiumPriceState.asStateFlow()
+    // hub. The store is the only source of truth for price: this stays null until RevenueCat
+    // resolves a live one, and stays null if it never does. There is deliberately no static
+    // fallback — a hardcoded price made a dead product render as a healthy paywall (Phase 7 debt,
+    // docs/Launch/08_ios_monetization_phaseplan.md). Consumers degrade instead (see
+    // UpgradePricingSection).
+    internal val _premiumPriceState = MutableStateFlow<String?>(null)
+    val premiumPriceState: StateFlow<String?> = _premiumPriceState.asStateFlow()
 
     // Temporary in-memory cache for the active import session; cleared immediately on dismiss or success.
     internal var pendingImportPdfBytes: ByteArray? = null
@@ -73,7 +76,7 @@ class PayslipViewModel(
 
     private fun loadPremiumPrice() {
         viewModelScope.launch {
-            billingManager.getFormattedPrice()?.let { _premiumPriceState.value = it }
+            _premiumPriceState.value = billingManager.getFormattedPrice()
         }
     }
 

@@ -173,7 +173,7 @@ object AppStrings {
     const val settingsOfflineSecureDesc = "All payslip decryption and parsing happens locally on your device. Your data never leaves your control."
     const val settingsAiPoweredByProxy = "AI insights powered by on-device Gemma"
     const val settingsDevOverrideTitle = "Developer · Premium Override"
-    const val settingsDevOverrideDesc = "Debug-only entitlement override. Not present in release builds."
+    const val settingsDevOverrideDesc = "Debug/TestFlight-only entitlement override. Not present in App Store production builds."
     const val settingsDevOverrideFollowFlag = "Follow Flag"
     const val settingsDevOverrideForcePremium = "Force Premium"
     const val settingsDevOverrideForceFree = "Force Free"

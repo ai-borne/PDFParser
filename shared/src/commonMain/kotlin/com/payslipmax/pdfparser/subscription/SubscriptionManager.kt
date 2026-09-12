@@ -45,32 +45,42 @@ interface SubscriptionService {
  * guard is unit-testable without a platform build. In release it resolves to `false`, which makes
  * the [DevOverride] mechanism completely inert: [hasAccess] then always follows the real flag.
  *
- * [isFreeLaunchModeProvider] (backed by [isFreeLaunchModePlatform]) sits below the debug
- * override but above billing/the flag: it's the v1.0 "ship unlocked" launch strategy (see
- * `docs/Launch/05_launch_strategy_and_resolution.md`), so QA can still use `FORCE_FREE` in debug
- * builds to exercise locked UX, but real users get every gate open regardless of billing state.
+ * [isTestFlightBuildProvider] (backed by [isTestFlightBuild]) extends override eligibility to
+ * TestFlight/sandbox installs only — never real App Store production — so Phase 7 of
+ * `docs/Launch/08_ios_monetization_phaseplan.md` can flip `FORCE_FREE` in a TestFlight build to
+ * make the real paywall reachable for a sandbox purchase, without ever touching
+ * [LaunchFlags.FREE_LAUNCH_MODE_IOS] itself.
+ *
+ * [isFreeLaunchModeProvider] (backed by [isFreeLaunchModePlatform]) sits below the override but
+ * above billing/the flag: it's the v1.0 "ship unlocked" launch strategy (see
+ * `docs/Launch/05_launch_strategy_and_resolution.md`), so QA can still use `FORCE_FREE` in an
+ * eligible build to exercise locked UX, but real users get every gate open regardless of billing
+ * state.
  */
 class SubscriptionManager(
     private val isPremiumEnabledProvider: () -> Boolean,
     private val isDebugBuildProvider: () -> Boolean = { isDebugBuild() },
     private val billingManager: BillingManager? = null,
     private val isFreeLaunchModeProvider: () -> Boolean = { isFreeLaunchModePlatform() },
+    private val isTestFlightBuildProvider: () -> Boolean = { isTestFlightBuild() },
 ) : SubscriptionService {
+    private val isOverrideEligibleProvider: () -> Boolean = { isDebugBuildProvider() || isTestFlightBuildProvider() }
+
     private val _devOverride =
         MutableStateFlow(
             if (isDebugBuildProvider()) DevOverride.FORCE_PRO else DevOverride.FOLLOW_FLAG,
         )
     val devOverride: StateFlow<DevOverride> = _devOverride.asStateFlow()
 
-    /** No-op unless this is a debug build — the override cannot be changed in release. */
+    /** No-op unless this is a debug build or TestFlight/sandbox install — inert in App Store production. */
     fun setDevOverride(override: DevOverride) {
-        if (isDebugBuildProvider()) {
+        if (isOverrideEligibleProvider()) {
             _devOverride.value = override
         }
     }
 
     override fun hasAccess(feature: FeatureGate): Boolean {
-        if (isDebugBuildProvider()) {
+        if (isOverrideEligibleProvider()) {
             when (_devOverride.value) {
                 DevOverride.FORCE_PRO -> return true
                 DevOverride.FORCE_FREE -> return false

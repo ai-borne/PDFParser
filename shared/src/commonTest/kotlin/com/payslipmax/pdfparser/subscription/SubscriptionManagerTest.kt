@@ -118,6 +118,37 @@ class SubscriptionManagerTest {
     }
 
     @Test
+    fun testTestFlightBuildCanForceFreeToRevealRealPaywallWithoutTouchingFreeLaunchFlag() {
+        // Phase 7: production flag stays true (free), but a TestFlight/sandbox install is override-eligible.
+        val manager =
+            SubscriptionManager(
+                isPremiumEnabledProvider = { false },
+                isDebugBuildProvider = { false },
+                isFreeLaunchModeProvider = { true },
+                isTestFlightBuildProvider = { true },
+            )
+        manager.setDevOverride(DevOverride.FORCE_FREE)
+        for (gate in FeatureGate.values()) {
+            assertFalse(manager.hasAccess(gate), "TestFlight FORCE_FREE must reach the real paywall even though production free-launch mode is on")
+        }
+    }
+
+    @Test
+    fun testOverrideStaysInertInRealProductionEvenWithFreeLaunchModeOff() {
+        // Not debug, not TestFlight: this is the real App Store production shape.
+        val manager =
+            SubscriptionManager(
+                isPremiumEnabledProvider = { false },
+                isDebugBuildProvider = { false },
+                isFreeLaunchModeProvider = { false },
+                isTestFlightBuildProvider = { false },
+            )
+        manager.setDevOverride(DevOverride.FORCE_PRO)
+        assertEquals(DevOverride.FOLLOW_FLAG, manager.devOverride.value, "override setter must be a no-op in real production")
+        assertFalse(manager.hasAccess(FeatureGate.PREMIUM_INTELLIGENCE))
+    }
+
+    @Test
     fun testIosAndAndroidFreeLaunchFlagsAreReadIndependently() {
         // A test double standing in for isFreeLaunchModePlatform(): each platform's manager only
         // reacts to its own flag, proving the flags aren't accidentally coupled through a shared read.

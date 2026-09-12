@@ -45,7 +45,7 @@ interface SubscriptionService {
  * guard is unit-testable without a platform build. In release it resolves to `false`, which makes
  * the [DevOverride] mechanism completely inert: [hasAccess] then always follows the real flag.
  *
- * [isFreeLaunchModeProvider] (backed by [LaunchFlags.FREE_LAUNCH_MODE]) sits below the debug
+ * [isFreeLaunchModeProvider] (backed by [isFreeLaunchModePlatform]) sits below the debug
  * override but above billing/the flag: it's the v1.0 "ship unlocked" launch strategy (see
  * `docs/Launch/05_launch_strategy_and_resolution.md`), so QA can still use `FORCE_FREE` in debug
  * builds to exercise locked UX, but real users get every gate open regardless of billing state.
@@ -54,7 +54,7 @@ class SubscriptionManager(
     private val isPremiumEnabledProvider: () -> Boolean,
     private val isDebugBuildProvider: () -> Boolean = { isDebugBuild() },
     private val billingManager: BillingManager? = null,
-    private val isFreeLaunchModeProvider: () -> Boolean = { LaunchFlags.FREE_LAUNCH_MODE },
+    private val isFreeLaunchModeProvider: () -> Boolean = { isFreeLaunchModePlatform() },
 ) : SubscriptionService {
     private val _devOverride =
         MutableStateFlow(

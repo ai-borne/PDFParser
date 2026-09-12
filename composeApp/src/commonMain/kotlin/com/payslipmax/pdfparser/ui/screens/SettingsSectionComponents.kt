@@ -13,7 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.payslipmax.pdfparser.Screen
-import com.payslipmax.pdfparser.subscription.LaunchFlags
+import com.payslipmax.pdfparser.subscription.isFreeLaunchModePlatform
 import com.payslipmax.pdfparser.ui.*
 import com.payslipmax.pdfparser.ui.theme.AppDimensions
 import com.payslipmax.pdfparser.ui.theme.AppStrings
@@ -35,7 +35,7 @@ fun AccountSubscriptionSection(
             profileCda = uiState.profileCdaNumber,
             profilePan = uiState.profilePanNumber,
         )
-        if (!LaunchFlags.FREE_LAUNCH_MODE) {
+        if (!isFreeLaunchModePlatform()) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             PremiumSettingsCardContentRow(
                 isPremiumEnabled = uiState.isPremiumEnabled,
@@ -77,7 +77,7 @@ fun PremiumSection(
 ) {
     val premiumPrice by viewModel.premiumPriceState.collectAsState()
 
-    if (!LaunchFlags.FREE_LAUNCH_MODE) {
+    if (!isFreeLaunchModePlatform()) {
         PremiumSettingsCard(
             isPremiumEnabled = uiState.isPremiumEnabled,
             onUpgradePrompt = onUpgradePrompt,

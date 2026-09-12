@@ -116,4 +116,31 @@ class SubscriptionManagerTest {
             assertFalse(manager.hasAccess(gate), "FORCE_FREE must still block $gate so QA can test locked UX during free launch")
         }
     }
+
+    @Test
+    fun testIosAndAndroidFreeLaunchFlagsAreReadIndependently() {
+        // A test double standing in for isFreeLaunchModePlatform(): each platform's manager only
+        // reacts to its own flag, proving the flags aren't accidentally coupled through a shared read.
+        var iosFlag = true
+        var androidFlag = true
+        val iosManager =
+            SubscriptionManager(
+                isPremiumEnabledProvider = { false },
+                isDebugBuildProvider = { false },
+                isFreeLaunchModeProvider = { iosFlag },
+            )
+        val androidManager =
+            SubscriptionManager(
+                isPremiumEnabledProvider = { false },
+                isDebugBuildProvider = { false },
+                isFreeLaunchModeProvider = { androidFlag },
+            )
+
+        assertTrue(iosManager.hasAccess(FeatureGate.PREMIUM_INTELLIGENCE))
+        assertTrue(androidManager.hasAccess(FeatureGate.PREMIUM_INTELLIGENCE))
+
+        iosFlag = false
+        assertFalse(iosManager.hasAccess(FeatureGate.PREMIUM_INTELLIGENCE), "iOS gate must follow only its own flag")
+        assertTrue(androidManager.hasAccess(FeatureGate.PREMIUM_INTELLIGENCE), "Android gate must stay unaffected by iOS's flag flipping")
+    }
 }

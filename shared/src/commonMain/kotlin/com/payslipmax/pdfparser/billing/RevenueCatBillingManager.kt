@@ -3,6 +3,7 @@ package com.payslipmax.pdfparser.billing
 import com.revenuecat.purchases.kmp.Purchases
 import com.revenuecat.purchases.kmp.PurchasesDelegate
 import com.revenuecat.purchases.kmp.models.CustomerInfo
+import com.revenuecat.purchases.kmp.models.Offerings
 import com.revenuecat.purchases.kmp.models.Package
 import com.revenuecat.purchases.kmp.models.PurchasesError
 import com.revenuecat.purchases.kmp.models.StoreProduct
@@ -21,8 +22,17 @@ import kotlin.coroutines.suspendCoroutine
  */
 const val REVENUECAT_ENTITLEMENT_ID = "PayslipMax Premium"
 
-/** RevenueCat package identifier inside the default Offering (Phase 0 dashboard setup). */
-private const val REVENUECAT_PACKAGE_ID = "yearly"
+/**
+ * Pure selection of the purchasable yearly package from a fetched [Offerings], unit-testable
+ * without the SDK.
+ *
+ * Resolves via [Offering.annual] (the SDK's typed accessor for the predefined `$rc_annual` package
+ * type) rather than a literal package identifier. The dashboard's package identifier is
+ * `$rc_annual`; `"yearly"` is the identifier of the *Test Store product inside* that package, not
+ * the package itself. Looking up `getPackage("yearly")` therefore never matched, so every purchase
+ * failed with "package unavailable" and the paywall silently fell back to a hardcoded price.
+ */
+fun selectYearlyPackage(offerings: Offerings): Package? = offerings.current?.annual
 
 /**
  * Pure mapping from RevenueCat's [CustomerInfo] to this app's [SubscriptionState], unit-testable
@@ -74,7 +84,7 @@ class RevenueCatBillingManager : BillingManager, PurchasesDelegate {
 
     override suspend fun launchBillingFlow(): PurchaseResult {
         val packageToPurchase =
-            resolveYearlyPackage() ?: return PurchaseResult.Error("Package $REVENUECAT_PACKAGE_ID unavailable")
+            resolveYearlyPackage() ?: return PurchaseResult.Error("Yearly package unavailable")
 
         return suspendCoroutine { continuation ->
             Purchases.sharedInstance.purchase(
@@ -120,7 +130,7 @@ class RevenueCatBillingManager : BillingManager, PurchasesDelegate {
         suspendCoroutine { continuation ->
             Purchases.sharedInstance.getOfferings(
                 onError = { continuation.resume(null) },
-                onSuccess = { offerings -> continuation.resume(offerings.current?.getPackage(REVENUECAT_PACKAGE_ID)) },
+                onSuccess = { offerings -> continuation.resume(selectYearlyPackage(offerings)) },
             )
         }
 }

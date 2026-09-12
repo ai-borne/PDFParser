@@ -24,7 +24,12 @@ current state after [06_closed_testing_progress_log.md](06_closed_testing_progre
   RevenueCat API key shipped in code) is complete as of 2026-09-12:
   `RevenueCatApiKey.ios.kt` now returns the real production key, `FREE_LAUNCH_MODE_IOS` remains
   `true` (paywall still dark for real users), and a regression test guards against ever re-shipping
-  the sandbox `test_...` key.
+  the sandbox `test_...` key. Phase 5 (paywall wiring verification) is complete as of 2026-09-12:
+  the existing paywall (`PremiumFeaturesScreen.kt`) confirmed sourcing real product/price data from
+  RevenueCat's SDK, not a mock. Found and fixed a real gap: `RevenueCatBillingManager`'s
+  entitlement-ID constant was `"premium"`, but the dashboard's actual entitlement identifier is
+  `"PayslipMax Premium"` (with the space) — a real purchase would never have resolved to `Active`
+  under the old constant. Fixed surgically; `FREE_LAUNCH_MODE_IOS` still `true`.
 - **Android**: Closed testing, `9 (1.0.0)` live on Internal testing (not yet promoted), `8 (1.0.0)`
   is the live Closed testing release, mandatory 14-day window running against v8. Still free by
   policy requirement, not choice.

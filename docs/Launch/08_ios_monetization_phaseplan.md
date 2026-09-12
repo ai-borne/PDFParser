@@ -233,6 +233,44 @@ offering, restore-purchases confirmed present and functional, still gated off fr
 (`FREE_LAUNCH_MODE_IOS = true`), full test suite green. No new UI code unless a genuine gap is
 found (e.g. price not sourced from the real offering) — if so, fix only that gap, surgically.
 
+**Phase Summary** (completed 2026-09-12): tech debt = a real wiring gap found and fixed, no other
+debt. Re-verified live state before starting: `v1.1.1` still `READY_FOR_SALE` via `fastlane ios
+review_status` (no review in flight), `FREE_LAUNCH_MODE_IOS` still `true` via `grep`. Traced
+`launchPurchaseFlow`/`restorePurchases`/price display end-to-end: `PremiumFeaturesScreen.kt` →
+`PayslipViewModelExtensions.kt` → `RevenueCatBillingManager` (`shared/.../billing/`) →
+`Purchases.sharedInstance.getOfferings()`/`.purchase()`/`.restorePurchases()` — all real SDK calls
+against the live `default` offering, no hardcoded/mock product or price (confirmed the price flow
+specifically: `PayslipViewModel._premiumPriceState` starts at an `AppStrings` static fallback and
+is overwritten by `billingManager.getFormattedPrice()`, exercised by
+`PayslipViewModelBillingTest.premiumPriceState_updates_from_live_billingManager_price`). While
+verifying the offering/package/entitlement chain directly against the live RevenueCat dashboard
+(not just trusting the Phase 3 memory summary) via `claude-in-chrome`, found a real gap:
+`RevenueCatBillingManager.REVENUECAT_ENTITLEMENT_ID` was hardcoded to `"premium"`, but the actual
+entitlement's dashboard **Identifier** field (Product catalog → Entitlements → PayslipMax Premium)
+is the literal string `"PayslipMax Premium"` (with the space) — confirmed via zoomed screenshot of
+the identifier field, not just eyeballing the list view. Since `entitlements.active[id]` is an
+exact-string lookup, this meant a real completed purchase would never have resolved to `Active`
+(`mapCustomerInfoToSubscriptionState` would always return `Inactive`) — a rejection-adjacent bug
+Phase 7's sandbox test would otherwise have caught the hard way. Confirmed the package-identifier
+side was *not* a bug: the offering's package identifier is `"yearly"` (the `$rc_annual` label is
+just the package's duration type, not its identifier), matching `RevenueCatBillingManager`'s
+existing `REVENUECAT_PACKAGE_ID = "yearly"` exactly, correctly attached to product
+`payslipmax_yearly_premium` from Phase 2/3. Fixed the gap surgically: changed
+`REVENUECAT_ENTITLEMENT_ID` to `"PayslipMax Premium"` with a doc comment explaining it must match
+the dashboard's literal identifier field, not a slugified guess
+(`shared/src/commonMain/kotlin/com/payslipmax/pdfparser/billing/RevenueCatBillingManager.kt`). No
+other call site or test hardcodes `"premium"` (verified via grep) — existing tests reference the
+constant, not a literal, so no test changes were needed. Verified
+`InsightCardGatingTest`/`GatedNavigationInvariantTest` still pass with the real product/entitlement
+config in play — both test the `FeatureGate`/`hasAccess` gating layer, which is independent of the
+RevenueCat entitlement ID string, so they were never at risk from this bug but are re-confirmed
+green regardless. Exit-criteria commands run for real: `:shared:testDebugUnitTest`
+`:composeApp:testDebugUnitTest` (including `InsightCardGatingTest`, `GatedNavigationInvariantTest`,
+`PayslipViewModelBillingTest`, `RevenueCatBillingManagerTest`, `SubscriptionManagerBillingTest`,
+`RevenueCatApiKeyTest`), `ktlintCheck`, `check_tech_debt_limits.py --strict` on the touched file,
+`iosX64Test`/`iosSimulatorArm64Test`, and `:composeApp:linkDebugFrameworkIosSimulatorArm64` — all
+green. `FREE_LAUNCH_MODE_IOS` untouched, still `true` (paywall still dark for real users).
+
 ---
 
 ## Phase 6 — Grandfather-clause: confirmed **no**

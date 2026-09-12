@@ -13,8 +13,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-/** RevenueCat entitlement identifier (Phase 0 dashboard setup). */
-const val REVENUECAT_ENTITLEMENT_ID = "premium"
+/**
+ * RevenueCat entitlement identifier. Must match the dashboard's literal "Identifier" field
+ * (Product catalog → Entitlements) exactly, not a slugified guess — this project's entitlement
+ * identifier is "PayslipMax Premium" (with the space), confirmed against the live dashboard in
+ * Phase 5; the code previously assumed "premium" which would never have matched a real purchase.
+ */
+const val REVENUECAT_ENTITLEMENT_ID = "PayslipMax Premium"
 
 /** RevenueCat package identifier inside the default Offering (Phase 0 dashboard setup). */
 private const val REVENUECAT_PACKAGE_ID = "yearly"

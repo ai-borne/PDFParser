@@ -184,6 +184,27 @@ unaffected — no code touched.
 **Exit criteria**: iOS build initializes RevenueCat against the production project; app still
 100% free-behaving; tests green.
 
+**Phase Summary** (completed 2026-09-12): no tech debt — a two-line key swap plus one new
+regression test, no structural change. Re-verified live state before starting (didn't trust the
+Phase 3 memory copy blindly): re-fetched the key from the RevenueCat dashboard directly
+(Project Settings → API keys → "PayslipMax (App Store)", created Sep 12, 2026) via
+`claude-in-chrome` and confirmed it matches the memory value exactly:
+`appl_NgEonbkizWMfsjfyaFCuTgBLWGx`. Also re-confirmed `v1.1.1` is still `READY_FOR_SALE` via
+`fastlane ios review_status` (no App Review in flight to conflict with a mid-review binary
+change). Replaced `RevenueCatApiKey.ios.kt`'s return value with the real key (public SDK key, safe
+to commit per RevenueCat's own docs — distinct from the ASC API key which must never enter the
+repo) and refreshed the stale doc comment on the `expect fun` that still described it as the
+Phase 0 Test Store key. `FREE_LAUNCH_MODE_IOS` left untouched at `true` (confirmed via `grep`
+after the change — still `true` in `LaunchFlags.kt`). Added
+`RevenueCatApiKeyTest.iosShipsRealProductionKeyNeverSandboxTestKey()` under `shared/src/iosTest/`
+asserting the key is not `test_`-prefixed and is `appl_`-prefixed — the exact regression guard the
+phase calls for, guarding against ever re-shipping the sandbox key (the root cause of the earlier
+Guideline 2.1 rejection). Exit-criteria commands run for real: `ktlintCheck`,
+`:shared:testDebugUnitTest`, `:composeApp:testDebugUnitTest`, `iosX64Test`,
+`iosSimulatorArm64Test`, `check_tech_debt_limits.py --strict` on the three touched files, and
+`:composeApp:linkDebugFrameworkIosSimulatorArm64` — all green. App behavior confirmed unchanged
+(still 100% free).
+
 ---
 
 ## Phase 5 — Verify the existing paywall wires up to the real product

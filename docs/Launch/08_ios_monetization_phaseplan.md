@@ -326,60 +326,92 @@ the single step whose absence caused the original rejection, per doc 07 §3 step
 **Exit criteria**: a documented, successful sandbox purchase + restore, screenshotted, with no
 manual workaround needed. Do not proceed to Phase 8 without this artifact existing.
 
-### ⚠️ Phase 7 progress log — **IN PROGRESS, NOT COMPLETE** (2026-09-12)
+**Phase Summary** (completed 2026-09-12): the sandbox purchase pipe is verified end to end on a
+real device via TestFlight `1.1.2 (3)`.
 
-**This is not a Phase Summary. Phase 7 is not done.** No sandbox purchase has succeeded yet, so the
-exit-criteria artifact does not exist and Phase 8 must not start. This log exists only so the next
-session doesn't re-derive what's already been established.
+**What was verified (exit-criteria artifacts, all screenshotted on-device):**
 
-**Done so far:**
+- **Product fetch** — paywall rendered `₹ 199` formatted by StoreKit, not the hardcoded
+  `AppStrings.settingsPremiumPlanPrice` (`"₹199 / Year"`). The absent `" / Year"` suffix is the
+  discriminator: a displayed price alone never proves the product resolved.
+- **Purchase completed** — Apple's Manage Subscription shows `PayslipMax Premium`, ₹199/year,
+  renewing 13 Sep 2026; a second purchase attempt returned "You are currently subscribed to this".
+- **Entitlement resolves** — confirmed *server-side* on the RevenueCat dashboard, not merely
+  inferred: customer `$RCAnonymousID:ff9a…62d0` (India) shows *"Started a subscription of PayslipMax
+  Yearly Premium (payslipmax_yearly_premium) for INR 199 from offering default"* and entitlement
+  **`PayslipMax Premium` → Active**. Product catalog → Entitlements shows Identifier and Display
+  Name are the *same* string `PayslipMax Premium`, so Phase 5's entitlement finding was correct
+  (unlike its package finding) and `REVENUECAT_ENTITLEMENT_ID` needs no change.
+- **Restore on a fresh install** — app deleted, reinstalled from TestFlight, Restore Purchases run
+  with no local state: the sheet auto-dismissed with no error, which is reachable only via
+  `PurchaseSheetOutcome.Success`, which in turn requires
+  `entitlements.active.containsKey("PayslipMax Premium")`.
+- **Failure paths degrade gracefully** — Airplane Mode purchase → inline *"Purchase failed: Error
+  performing request."*; Airplane Mode restore → *"Restore failed: Error performing request because
+  the internet connection appears to be offline."* Sheet stays open, controls re-enable, no crash
+  and **no hang** — i.e. the `suspendCoroutine` in `launchBillingFlow`/`restorePurchases` does get
+  its callback on network failure. A hang here would have been a 2.1 risk independent of IAP config.
 
-- **TestFlight override mechanism shipped** (commit `4a74192`). Added `isTestFlightBuild()`
-  (`shared/.../subscription/PlatformDebug.kt`) — iOS detects a StoreKit sandbox receipt
-  (`appStoreReceiptURL.lastPathComponent == "sandboxReceipt"`), Android returns `false`.
-  `SubscriptionManager`'s existing `DevOverride` eligibility widened from debug-only to
-  debug-or-TestFlight, so `FORCE_FREE` reveals the real paywall in a TestFlight build **without
-  touching `FREE_LAUNCH_MODE_IOS`**, which stays `true`. Inert in real App Store builds. Verified
-  working on-device: the override section appears in TestFlight and gated features lock correctly.
-- **iOS version bumped to `1.1.2 (4)`.** `1.1.1` was rejected at upload with "Invalid Pre-Release
-  Train — the train version '1.1.1' is closed for new build submissions" because `1.1.1` is already
-  released. A build-number bump alone is not enough once a version is live; the marketing version
-  must move too. `1.1.2 (2)` is uploaded and "Ready to Test" in TestFlight.
-- **First sandbox purchase attempt FAILED**: "Purchase failed: Package yearly unavailable". Root
-  cause found and fixed (commit `e5ae1f2`) — see the Phase 5 correction block above. Note the
-  paywall still displayed "₹199 / Year" during this failure: that is the hardcoded
-  `AppStrings.settingsPremiumPlanPrice` fallback, not live store data. Because `getFormattedPrice()`
-  and the purchase share the same resolver, a dead product renders a healthy-looking paywall.
+**Explicitly NOT verified (do not record these as passed):**
 
-**Established, so don't re-litigate it:**
+1. **Cancel mid-purchase.** Once subscribed, tapping Unlock yields Apple's "already subscribed"
+   alert instead of a cancellable purchase sheet, so the sub-criterion became untestable in this
+   session. The offline path exercises the same in-app recovery behaviour, but this specific
+   interaction remains untested.
+2. **Gate-level unlocking is unverifiable on this build by construction.** With
+   `FREE_LAUNCH_MODE_IOS = true`, `SubscriptionManager.hasAccess` short-circuits in *both* override
+   positions — `FORCE_FREE` returns `false` unconditionally, `FOLLOW_FLAG` falls through to the
+   free-launch check and returns `true` unconditionally — so the `billingManager.subscriptionState`
+   branch is unreachable. The Settings premium card, the one UI bound to `isPremiumEnabled` rather
+   than `hasAccess`, is itself suppressed by `if (!isFreeLaunchModePlatform())`
+   (`SettingsSectionComponents.kt:39`). **No in-app UI exposes entitlement state while the free-launch
+   flag is true**; gated cards are flag echoes, not evidence. This resolves in Phase 8 when the flag
+   flips, and must be re-tested there.
 
-- **A sandbox purchase does NOT require submitting the app for review first.** The ASC banner "Your
-  first auto-renewable subscription must be submitted with a new app version" governs *submission*,
-  not sandbox availability. RevenueCat staff: *"In-app purchases don't have to be in the final
-  approved state — 'Ready to submit' will work fine."* Apple's guidance is to test in sandbox
-  *before* submitting. So Phase 7 → Phase 8 order stands; **do not submit early to "unblock" this.**
-  (Submitting early would also risk a Guideline 2.1 rejection, since with `FREE_LAUNCH_MODE_IOS`
-  still `true` a reviewer has no normal path to the paywall.)
-- ASC side is healthy: subscription `payslipmax_yearly_premium` is **Ready for Review**, 1 Year
-  Upfront, all territories, pricing and English (U.S.) localization present.
+**Tech debt incurred and resolved this phase:**
 
-**Known open gaps (not yet proven to matter, but unresolved):**
+1. **`Info.plist` hardcoded `CFBundleVersion` as the literal `2`** while `CFBundleShortVersionString`
+   correctly used `$(MARKETING_VERSION)` — so `CURRENT_PROJECT_VERSION` was dead and every archive
+   ever produced shipped as build 2, the `1.1.2 (4)` bump in `e5ae1f2` being a no-op. Xcode's
+   "Manage Version and Build Number" masked it by auto-incrementing at upload (hence TestFlight
+   `1.1.2 (3)`). **Resolved** in `8d2a18f`: wired to `$(CURRENT_PROJECT_VERSION)`, verified
+   resolving to 4 in both Debug and Release via `xcodebuild -showBuildSettings`.
+2. **`resolveYearlyPackage()` collapsed three failure modes into one opaque error**, and
+   `getFormattedPrice()` failed identically for all three by falling back to the hardcoded price —
+   a dead product rendering as a healthy paywall, which is what made the first failure cost a full
+   debugging session. **Resolved** in `e693581`: `YearlyPackageResolution` (`Resolved` /
+   `OfferingsUnavailable` / `NoCurrentOffering` / `NoAnnualPackage`), each failure naming its own
+   cause, a `getOfferings` failure carrying the SDK's message. Purely diagnostic — resolution logic
+   unchanged, so the verified purchase path is untouched. Scope was confirmed with the user before
+   implementing, and deliberately excludes the price fallback (see carried debt below).
 
-1. **RevenueCat's App Store Connect API key slot is empty.** The product shows "Store Status: Could
-   not check", whose tooltip reads *"Connection issue. Make sure the App Store Connect API
-   credentials are configured properly."* The app config has **two** key slots: the *In-app purchase
-   key* (`J87P2YJ2PS.p8`, shows ✓ Valid credentials — this is what Phase 3 filled) and a separate
-   *App Store Connect API* slot, still empty and marked Required. It drives server-side product
-   import/price sync (hence Phase 3's "Import" finding nothing), so it should not block an on-device
-   purchase — but it is unverified. Requires a manual `.p8` upload by the user.
-2. **The subscription group has no localization.** ASC → group "PayslipMax Yearly Premium" →
-   Localization is empty. The *subscription's* own localization is fine. Group localization is
-   required before submission regardless.
+**Tech debt carried forward (recorded, not silently dropped):**
 
-**Next step**: archive a fresh `1.1.2 (4)` build with commit `e5ae1f2`, upload, retry the sandbox
-purchase, then complete restore + cancel + offline-failure testing and screenshot the results.
+- **The hardcoded price fallback stays.** `AppStrings.settingsPremiumPlanPrice` still renders as if
+  it were live store data when RevenueCat returns nothing. Fixing it (show no price until live data
+  arrives) touches `PayslipViewModel`, both premium composables and their tests — a wider UI
+  decision deferred by explicit user choice, not an oversight.
+- **Restore's success message is never visible.** `onRestoreClick` sets `feedbackStatus` and calls
+  `onDismissRequest()` in the same branch (`PremiumUpgradeBottomSheet.kt:96-104`), so the
+  confirmation renders into a sheet being torn down. The user sees a spinner, then silence, on a
+  *successful* restore. Cosmetic, but it actively misleads during testing.
+- **No regression test for the `Info.plist` fix.** `iosApp` has no test target; asserting a
+  build-config placeholder would mean standing up test infrastructure for a file with no runtime
+  behaviour. Stated rather than pretended.
 
----
+**Build/test status:** `ktlintCheck`, `:shared:testDebugUnitTest`, `:composeApp:testDebugUnitTest`,
+`iosSimulatorArm64Test`, the tech-debt audit and the iOS framework link check were all run for real
+and are green; the full pre-push gate (both variants, corpus regression, iOS suite, gitleaks over
+the pushed range) passed on `8d2a18f`. `FREE_LAUNCH_MODE_IOS` remains `true` — production is
+untouched and the paywall stays dark until Phase 8.
+
+**Open gaps carried into Phase 8:**
+
+1. **RevenueCat's App Store Connect API key slot is still empty** (product Store Status "Could not
+   check"). Now demonstrated *empirically harmless* to on-device purchasing — the full purchase,
+   entitlement and restore chain worked without it — so it is a server-side sync/display concern
+   only, not a blocker. Still worth filling; needs a manual `.p8` upload by the user.
+2. **The ASC subscription group has no localization.** Unchanged, and required before submission.
 
 ## Phase 8 — Flip the real flag + submit
 

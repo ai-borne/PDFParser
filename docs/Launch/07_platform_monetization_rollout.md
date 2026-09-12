@@ -31,17 +31,28 @@ current state after [06_closed_testing_progress_log.md](06_closed_testing_progre
   `"PayslipMax Premium"` (with the space) — a real purchase would never have resolved to `Active`
   under the old constant. Fixed surgically; `FREE_LAUNCH_MODE_IOS` still `true`. Phase 6
   (grandfather clause) required no work — it is a recorded decision (**no** grandfathering), not an
-  implementation task. **Phase 7 (sandbox purchase verification) is IN PROGRESS and NOT complete**:
-  a TestFlight-only paywall override shipped (`4a74192`, `isTestFlightBuild()` + widened
-  `DevOverride` eligibility, `FREE_LAUNCH_MODE_IOS` untouched at `true`), iOS bumped to `1.1.2 (4)`
-  (the `1.1.1` train is closed to new builds now that `1.1.1` is released), and the first sandbox
-  purchase attempt **failed** with "Package yearly unavailable". Root cause: the code looked up the
-  RevenueCat package by the literal id `"yearly"`, but the dashboard package's identifier is
-  `$rc_annual` (`"yearly"` is the Test Store *product* inside it), so no purchase could ever have
-  succeeded — fixed in `e5ae1f2` via the SDK's typed `Offering.annual` accessor. No successful
-  sandbox purchase exists yet, so **Phase 8 must not start**. Two open gaps: RevenueCat's separate
-  *App Store Connect API* key slot is empty ("Store Status: Could not check"), and the ASC
-  subscription **group** has no localization. Full detail in doc 08's Phase 7 progress log.
+  implementation task. **Phase 7 (sandbox purchase verification) is COMPLETE (2026-09-12)**: a
+  TestFlight-only paywall override shipped (`4a74192`, `isTestFlightBuild()` + widened `DevOverride`
+  eligibility, `FREE_LAUNCH_MODE_IOS` untouched at `true`). The first sandbox purchase failed with
+  "Package yearly unavailable" — the code looked up the RevenueCat package by the literal id
+  `"yearly"`, but the dashboard package's identifier is `$rc_annual` (`"yearly"` is the Test Store
+  *product* inside it), fixed in `e5ae1f2` via the SDK's typed `Offering.annual` accessor. On
+  TestFlight `1.1.2 (3)` the whole pipe then verified end to end on-device: live StoreKit price,
+  purchase completed (Apple shows the subscription active, renewing 13 Sep 2026), entitlement
+  `PayslipMax Premium` confirmed **Active** on the RevenueCat dashboard server-side, restore working
+  on a fresh install, and both offline failure paths degrading gracefully with no crash or hang.
+  Two sub-criteria are explicitly **not** verified: cancel-mid-purchase (blocked once subscribed),
+  and gate-level unlocking, which is unverifiable by construction while `FREE_LAUNCH_MODE_IOS` is
+  `true` — `hasAccess` short-circuits in both override positions and the one `isPremiumEnabled`-bound
+  card is suppressed by the same flag, so **no in-app UI exposes entitlement state until Phase 8
+  flips it**. Tech debt found and fixed en route: `Info.plist` hardcoded `CFBundleVersion` to the
+  literal `2`, making `CURRENT_PROJECT_VERSION` dead (`8d2a18f`), and `resolveYearlyPackage()`
+  collapsed three distinct failure modes into one opaque error while the hardcoded price fallback
+  made a dead product look like a healthy paywall (`e693581`, diagnostics only). Two open gaps carry
+  into Phase 8: RevenueCat's separate *App Store Connect API* key slot is empty ("Store Status:
+  Could not check") — now shown empirically **not** to block on-device purchasing — and the ASC
+  subscription **group** still has no localization, which is required before submission. Full detail
+  in doc 08's Phase 7 Phase Summary.
 - **Android**: Closed testing, `9 (1.0.0)` live on Internal testing (not yet promoted), `8 (1.0.0)`
   is the live Closed testing release, mandatory 14-day window running against v8. Still free by
   policy requirement, not choice.

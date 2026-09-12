@@ -4,7 +4,6 @@ import com.revenuecat.purchases.kmp.Purchases
 import com.revenuecat.purchases.kmp.PurchasesDelegate
 import com.revenuecat.purchases.kmp.models.CustomerInfo
 import com.revenuecat.purchases.kmp.models.Offerings
-import com.revenuecat.purchases.kmp.models.Package
 import com.revenuecat.purchases.kmp.models.PurchasesError
 import com.revenuecat.purchases.kmp.models.StoreProduct
 import com.revenuecat.purchases.kmp.models.StoreTransaction
@@ -23,7 +22,7 @@ import kotlin.coroutines.suspendCoroutine
 const val REVENUECAT_ENTITLEMENT_ID = "PayslipMax Premium"
 
 /**
- * Pure selection of the purchasable yearly package from a fetched [Offerings], unit-testable
+ * Pure resolution of the purchasable yearly package from a fetched [Offerings], unit-testable
  * without the SDK.
  *
  * Resolves via [Offering.annual] (the SDK's typed accessor for the predefined `$rc_annual` package
@@ -31,8 +30,16 @@ const val REVENUECAT_ENTITLEMENT_ID = "PayslipMax Premium"
  * `$rc_annual`; `"yearly"` is the identifier of the *Test Store product inside* that package, not
  * the package itself. Looking up `getPackage("yearly")` therefore never matched, so every purchase
  * failed with "package unavailable" and the paywall silently fell back to a hardcoded price.
+ *
+ * Returns a [YearlyPackageResolution] rather than a nullable package so the two dashboard
+ * misconfigurations — no Current offering, versus a Current offering with an empty annual slot —
+ * stay distinguishable instead of collapsing into one opaque failure.
  */
-fun selectYearlyPackage(offerings: Offerings): Package? = offerings.current?.annual
+fun resolveYearlyPackageFrom(offerings: Offerings): YearlyPackageResolution {
+    val currentOffering = offerings.current ?: return YearlyPackageResolution.NoCurrentOffering
+    val annual = currentOffering.annual ?: return YearlyPackageResolution.NoAnnualPackage
+    return YearlyPackageResolution.Resolved(annual)
+}
 
 /**
  * Pure mapping from RevenueCat's [CustomerInfo] to this app's [SubscriptionState], unit-testable
@@ -84,7 +91,10 @@ class RevenueCatBillingManager : BillingManager, PurchasesDelegate {
 
     override suspend fun launchBillingFlow(): PurchaseResult {
         val packageToPurchase =
-            resolveYearlyPackage() ?: return PurchaseResult.Error("Yearly package unavailable")
+            when (val resolution = resolveYearlyPackage()) {
+                is YearlyPackageResolution.Resolved -> resolution.yearlyPackage
+                is YearlyPackageResolution.Failure -> return PurchaseResult.Error(resolution.message)
+            }
 
         return suspendCoroutine { continuation ->
             Purchases.sharedInstance.purchase(
@@ -124,13 +134,24 @@ class RevenueCatBillingManager : BillingManager, PurchasesDelegate {
             )
         }
 
-    override suspend fun getFormattedPrice(): String? = resolveYearlyPackage()?.storeProduct?.price?.formatted
+    override suspend fun getFormattedPrice(): String? =
+        (resolveYearlyPackage() as? YearlyPackageResolution.Resolved)
+            ?.yearlyPackage
+            ?.storeProduct
+            ?.price
+            ?.formatted
 
-    private suspend fun resolveYearlyPackage(): Package? =
+    private suspend fun resolveYearlyPackage(): YearlyPackageResolution =
         suspendCoroutine { continuation ->
             Purchases.sharedInstance.getOfferings(
-                onError = { continuation.resume(null) },
-                onSuccess = { offerings -> continuation.resume(selectYearlyPackage(offerings)) },
+                onError = { error ->
+                    continuation.resume(
+                        YearlyPackageResolution.OfferingsUnavailable(
+                            error.message ?: "Could not load subscription offerings",
+                        ),
+                    )
+                },
+                onSuccess = { offerings -> continuation.resume(resolveYearlyPackageFrom(offerings)) },
             )
         }
 }

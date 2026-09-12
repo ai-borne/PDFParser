@@ -7,7 +7,8 @@ import com.revenuecat.purchases.kmp.models.PackageType
 import com.revenuecat.purchases.kmp.models.PresentedOfferingContext
 import com.revenuecat.purchases.kmp.models.StoreProduct
 import kotlin.test.Test
-import kotlin.test.assertNotNull
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 
@@ -57,7 +58,10 @@ class YearlyPackageSelectionTest {
     fun resolvesTheAnnualPackageConfiguredInTheDashboard() {
         val (offerings, annual) = liveDashboardShapedOfferings()
 
-        assertSame(annual, selectYearlyPackage(offerings), "must resolve the dashboard's \$rc_annual package")
+        val resolution = resolveYearlyPackageFrom(offerings)
+
+        assertIs<YearlyPackageResolution.Resolved>(resolution)
+        assertSame(annual, resolution.yearlyPackage, "must resolve the dashboard's \$rc_annual package")
     }
 
     @Test
@@ -69,13 +73,36 @@ class YearlyPackageSelectionTest {
         val (offerings, _) = liveDashboardShapedOfferings()
 
         assertNull(offerings.current?.getPackage("yearly"))
-        assertNotNull(selectYearlyPackage(offerings))
+        assertIs<YearlyPackageResolution.Resolved>(resolveYearlyPackageFrom(offerings))
     }
 
     @Test
-    fun returnsNullWhenNoOfferingIsMarkedCurrent() {
-        // If no offering is set as Default in the dashboard, `current` is null and nothing is
-        // purchasable — callers must surface that rather than assume a package exists.
-        assertNull(selectYearlyPackage(Offerings(all = emptyMap(), current = null)))
+    fun missingCurrentOfferingIsReportedDistinctlyFromAMissingAnnualPackage() {
+        // These two need opposite fixes in the dashboard — mark an offering Default, versus attach
+        // a product to the annual slot of the offering that already is. Collapsing them into one
+        // opaque error is what made the original failure cost a full debugging session, so the
+        // distinction is the behaviour under test, not merely the message text.
+        val noCurrent = resolveYearlyPackageFrom(Offerings(all = emptyMap(), current = null))
+        val emptyAnnualSlot =
+            FakeOffering(availablePackages = emptyList(), annual = null).let { offering ->
+                resolveYearlyPackageFrom(Offerings(all = mapOf(offering.identifier to offering), current = offering))
+            }
+
+        assertIs<YearlyPackageResolution.NoCurrentOffering>(noCurrent)
+        assertIs<YearlyPackageResolution.NoAnnualPackage>(emptyAnnualSlot)
+        assertEquals(
+            2,
+            setOf(noCurrent.message, emptyAnnualSlot.message).size,
+            "each failure mode must name its own cause, not share one generic message",
+        )
+    }
+
+    @Test
+    fun offeringsFetchFailureCarriesTheUnderlyingCause() {
+        // A failed getOfferings call (network down, bad credentials) must not be indistinguishable
+        // from a misconfigured dashboard: the SDK's own message is what tells them apart.
+        val failure = YearlyPackageResolution.OfferingsUnavailable("The internet connection appears to be offline.")
+
+        assertEquals("The internet connection appears to be offline.", failure.message)
     }
 }

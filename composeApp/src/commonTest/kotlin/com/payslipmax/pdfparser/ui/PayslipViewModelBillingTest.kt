@@ -195,4 +195,67 @@ class PayslipViewModelBillingTest {
 
             assertNull(viewModel.premiumPriceState.value)
         }
+
+    // The startup fetch can land before StoreKit has resolved the device's storefront, which
+    // returns a price in the wrong currency (observed on TestFlight 1.2 (5): the paywall showed
+    // "$9.99" while Apple's own purchase sheet charged "₹ 999 per year" on the same Indian
+    // account). A price read once at init and never re-read freezes that wrong answer for the
+    // whole session, so the app quotes a number it will not charge. Re-reading when the paywall
+    // is presented is what makes the displayed price the one the user is actually offered.
+    @Test
+    fun refreshPremiumPrice_rereads_the_store_so_a_late_storefront_replaces_the_startup_price() =
+        runTest {
+            fakeBillingManager.fakeFormattedPrice = "$9.99"
+            val repository =
+                PayslipRepository(
+                    com.payslipmax.pdfparser.testing.FakePayslipDao(),
+                    com.payslipmax.pdfparser.testing.FakePdfParser(),
+                    Dispatchers.Unconfined,
+                )
+
+            val viewModel =
+                PayslipViewModel(
+                    repository = repository,
+                    billingManager = fakeBillingManager,
+                )
+
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals("$9.99", viewModel.premiumPriceState.value)
+
+            fakeBillingManager.fakeFormattedPrice = "₹999.00"
+            viewModel.refreshPremiumPrice()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals("₹999.00", viewModel.premiumPriceState.value)
+        }
+
+    // A transient offerings failure while the paywall is open must not blank a price the user is
+    // already looking at — that would disable Unlock mid-decision. Losing a known-good price is a
+    // worse failure than showing the last one the store gave us.
+    @Test
+    fun refreshPremiumPrice_keeps_the_last_known_price_when_the_store_returns_nothing() =
+        runTest {
+            fakeBillingManager.fakeFormattedPrice = "₹999.00"
+            val repository =
+                PayslipRepository(
+                    com.payslipmax.pdfparser.testing.FakePayslipDao(),
+                    com.payslipmax.pdfparser.testing.FakePdfParser(),
+                    Dispatchers.Unconfined,
+                )
+
+            val viewModel =
+                PayslipViewModel(
+                    repository = repository,
+                    billingManager = fakeBillingManager,
+                )
+
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals("₹999.00", viewModel.premiumPriceState.value)
+
+            fakeBillingManager.fakeFormattedPrice = null
+            viewModel.refreshPremiumPrice()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals("₹999.00", viewModel.premiumPriceState.value)
+        }
 }

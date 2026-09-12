@@ -88,6 +88,7 @@ private fun InsightsOverlayDialogs(
             onUnlockClick = { onResult -> viewModel.launchPurchaseFlow(onResult) },
             onRestoreClick = { onResult -> viewModel.restorePurchases(onResult) },
             price = premiumPrice,
+            onPresented = viewModel::refreshPremiumPrice,
         )
     }
 }

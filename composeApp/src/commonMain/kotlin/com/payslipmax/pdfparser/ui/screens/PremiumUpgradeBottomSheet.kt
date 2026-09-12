@@ -76,12 +76,17 @@ fun PremiumUpgradeBottomSheet(
     onTermsClick: (() -> Unit)? = null,
     onPrivacyClick: (() -> Unit)? = null,
     price: String? = null,
+    onPresented: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var isPurchasing by rememberSaveable { mutableStateOf(false) }
     var isRestoring by rememberSaveable { mutableStateOf(false) }
     var feedbackStatus by remember { mutableStateOf<BackupStatus?>(null) }
     var pendingDismissDelayMs by remember { mutableStateOf<Long?>(null) }
+
+    // Re-read the store price as the sheet opens: the startup read can predate StoreKit resolving
+    // the storefront, and this sheet is where the quoted price becomes a commitment.
+    LaunchedEffect(Unit) { onPresented() }
 
     LaunchedEffect(pendingDismissDelayMs) {
         pendingDismissDelayMs?.let { delayMs ->

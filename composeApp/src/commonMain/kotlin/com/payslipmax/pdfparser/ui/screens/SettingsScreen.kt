@@ -56,6 +56,7 @@ fun SettingsScreen(
                 onNavigateTo(Screen.PrivacyPolicy)
             },
             price = premiumPrice,
+            onPresented = viewModel::refreshPremiumPrice,
         )
     }
 }

@@ -71,12 +71,21 @@ class PayslipViewModel(
         observeSettings()
         observeSubscriptionLifecycle()
         installGemmaBaseModel()
-        loadPremiumPrice()
+        refreshPremiumPrice()
     }
 
-    private fun loadPremiumPrice() {
+    /**
+     * Re-reads the store's formatted price. Called at startup and again whenever the paywall is
+     * presented: the startup read can land before StoreKit has resolved the device's storefront
+     * and return the wrong currency, and a value read once would then be quoted for the rest of
+     * the session while Apple charges the real local price (see `PayslipViewModelBillingTest`).
+     *
+     * A fetch that returns nothing leaves the last known price in place rather than blanking it —
+     * a transient failure while the sheet is open must not disable Unlock mid-decision.
+     */
+    fun refreshPremiumPrice() {
         viewModelScope.launch {
-            _premiumPriceState.value = billingManager.getFormattedPrice()
+            billingManager.getFormattedPrice()?.let { _premiumPriceState.value = it }
         }
     }
 

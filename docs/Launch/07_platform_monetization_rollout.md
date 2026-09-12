@@ -29,7 +29,19 @@ current state after [06_closed_testing_progress_log.md](06_closed_testing_progre
   RevenueCat's SDK, not a mock. Found and fixed a real gap: `RevenueCatBillingManager`'s
   entitlement-ID constant was `"premium"`, but the dashboard's actual entitlement identifier is
   `"PayslipMax Premium"` (with the space) — a real purchase would never have resolved to `Active`
-  under the old constant. Fixed surgically; `FREE_LAUNCH_MODE_IOS` still `true`.
+  under the old constant. Fixed surgically; `FREE_LAUNCH_MODE_IOS` still `true`. Phase 6
+  (grandfather clause) required no work — it is a recorded decision (**no** grandfathering), not an
+  implementation task. **Phase 7 (sandbox purchase verification) is IN PROGRESS and NOT complete**:
+  a TestFlight-only paywall override shipped (`4a74192`, `isTestFlightBuild()` + widened
+  `DevOverride` eligibility, `FREE_LAUNCH_MODE_IOS` untouched at `true`), iOS bumped to `1.1.2 (4)`
+  (the `1.1.1` train is closed to new builds now that `1.1.1` is released), and the first sandbox
+  purchase attempt **failed** with "Package yearly unavailable". Root cause: the code looked up the
+  RevenueCat package by the literal id `"yearly"`, but the dashboard package's identifier is
+  `$rc_annual` (`"yearly"` is the Test Store *product* inside it), so no purchase could ever have
+  succeeded — fixed in `e5ae1f2` via the SDK's typed `Offering.annual` accessor. No successful
+  sandbox purchase exists yet, so **Phase 8 must not start**. Two open gaps: RevenueCat's separate
+  *App Store Connect API* key slot is empty ("Store Status: Could not check"), and the ASC
+  subscription **group** has no localization. Full detail in doc 08's Phase 7 progress log.
 - **Android**: Closed testing, `9 (1.0.0)` live on Internal testing (not yet promoted), `8 (1.0.0)`
   is the live Closed testing release, mandatory 14-day window running against v8. Still free by
   policy requirement, not choice.

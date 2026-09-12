@@ -271,6 +271,21 @@ green regardless. Exit-criteria commands run for real: `:shared:testDebugUnitTes
 `iosX64Test`/`iosSimulatorArm64Test`, and `:composeApp:linkDebugFrameworkIosSimulatorArm64` — all
 green. `FREE_LAUNCH_MODE_IOS` untouched, still `true` (paywall still dark for real users).
 
+> **Correction (2026-09-12, during Phase 7)**: the package-identifier claim in the Phase 5 summary
+> above is **wrong**, and it was the direct cause of Phase 7's first sandbox purchase failing. The
+> summary states the offering's package identifier is `"yearly"` and that `$rc_annual` is "just the
+> package's duration type, not its identifier." The opposite is true. Verified against the live
+> dashboard: the `default` offering contains exactly one package whose **identifier is
+> `$rc_annual`**; `"yearly"` is the identifier of the *Test Store product inside* that package. The
+> RevenueCat KMP SDK's `Offering.getPackage(identifier)` matches on `Package.identifier`
+> (`availablePackages.firstOrNull { it.identifier == identifier }`, read from the SDK source), so
+> `getPackage("yearly")` could never match and **no purchase could ever have succeeded**. Note that
+> Phase 3's record ("wired into the `default` offering's `$rc_annual` package") was correct all
+> along — Phase 5 "corrected" a non-bug into a wrong conclusion. Fixed in commit `e5ae1f2` by
+> resolving through the SDK's typed `Offering.annual` accessor instead of any literal identifier.
+> **Lesson for future phases: reading a dashboard label is not verification — confirm which field
+> the SDK actually matches on.**
+
 ---
 
 ## Phase 6 — Grandfather-clause: confirmed **no**
@@ -310,6 +325,59 @@ the single step whose absence caused the original rejection, per doc 07 §3 step
 
 **Exit criteria**: a documented, successful sandbox purchase + restore, screenshotted, with no
 manual workaround needed. Do not proceed to Phase 8 without this artifact existing.
+
+### ⚠️ Phase 7 progress log — **IN PROGRESS, NOT COMPLETE** (2026-09-12)
+
+**This is not a Phase Summary. Phase 7 is not done.** No sandbox purchase has succeeded yet, so the
+exit-criteria artifact does not exist and Phase 8 must not start. This log exists only so the next
+session doesn't re-derive what's already been established.
+
+**Done so far:**
+
+- **TestFlight override mechanism shipped** (commit `4a74192`). Added `isTestFlightBuild()`
+  (`shared/.../subscription/PlatformDebug.kt`) — iOS detects a StoreKit sandbox receipt
+  (`appStoreReceiptURL.lastPathComponent == "sandboxReceipt"`), Android returns `false`.
+  `SubscriptionManager`'s existing `DevOverride` eligibility widened from debug-only to
+  debug-or-TestFlight, so `FORCE_FREE` reveals the real paywall in a TestFlight build **without
+  touching `FREE_LAUNCH_MODE_IOS`**, which stays `true`. Inert in real App Store builds. Verified
+  working on-device: the override section appears in TestFlight and gated features lock correctly.
+- **iOS version bumped to `1.1.2 (4)`.** `1.1.1` was rejected at upload with "Invalid Pre-Release
+  Train — the train version '1.1.1' is closed for new build submissions" because `1.1.1` is already
+  released. A build-number bump alone is not enough once a version is live; the marketing version
+  must move too. `1.1.2 (2)` is uploaded and "Ready to Test" in TestFlight.
+- **First sandbox purchase attempt FAILED**: "Purchase failed: Package yearly unavailable". Root
+  cause found and fixed (commit `e5ae1f2`) — see the Phase 5 correction block above. Note the
+  paywall still displayed "₹199 / Year" during this failure: that is the hardcoded
+  `AppStrings.settingsPremiumPlanPrice` fallback, not live store data. Because `getFormattedPrice()`
+  and the purchase share the same resolver, a dead product renders a healthy-looking paywall.
+
+**Established, so don't re-litigate it:**
+
+- **A sandbox purchase does NOT require submitting the app for review first.** The ASC banner "Your
+  first auto-renewable subscription must be submitted with a new app version" governs *submission*,
+  not sandbox availability. RevenueCat staff: *"In-app purchases don't have to be in the final
+  approved state — 'Ready to submit' will work fine."* Apple's guidance is to test in sandbox
+  *before* submitting. So Phase 7 → Phase 8 order stands; **do not submit early to "unblock" this.**
+  (Submitting early would also risk a Guideline 2.1 rejection, since with `FREE_LAUNCH_MODE_IOS`
+  still `true` a reviewer has no normal path to the paywall.)
+- ASC side is healthy: subscription `payslipmax_yearly_premium` is **Ready for Review**, 1 Year
+  Upfront, all territories, pricing and English (U.S.) localization present.
+
+**Known open gaps (not yet proven to matter, but unresolved):**
+
+1. **RevenueCat's App Store Connect API key slot is empty.** The product shows "Store Status: Could
+   not check", whose tooltip reads *"Connection issue. Make sure the App Store Connect API
+   credentials are configured properly."* The app config has **two** key slots: the *In-app purchase
+   key* (`J87P2YJ2PS.p8`, shows ✓ Valid credentials — this is what Phase 3 filled) and a separate
+   *App Store Connect API* slot, still empty and marked Required. It drives server-side product
+   import/price sync (hence Phase 3's "Import" finding nothing), so it should not block an on-device
+   purchase — but it is unverified. Requires a manual `.p8` upload by the user.
+2. **The subscription group has no localization.** ASC → group "PayslipMax Yearly Premium" →
+   Localization is empty. The *subscription's* own localization is fine. Group localization is
+   required before submission regardless.
+
+**Next step**: archive a fresh `1.1.2 (4)` build with commit `e5ae1f2`, upload, retry the sandbox
+purchase, then complete restore + cancel + offline-failure testing and screenshot the results.
 
 ---
 

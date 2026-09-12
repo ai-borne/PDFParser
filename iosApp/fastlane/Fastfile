@@ -180,4 +180,26 @@ platform :ios do
     UI.message(JSON.pretty_generate(asc_get(options[:path])))
   end
 
+  desc "Show a subscription's current customer price per territory (defaults to the key ones)"
+  lane :subscription_prices do |options|
+    asc_api_key
+    app = Spaceship::ConnectAPI::App.find(CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier))
+    want = (options[:territories] || "IND,USA,GBR").split(",")
+    groups = asc_get("/v1/apps/#{app.id}/subscriptionGroups")["data"] || []
+    groups.each do |g|
+      subs = asc_get("/v1/subscriptionGroups/#{g['id']}/subscriptions")["data"] || []
+      subs.each do |s|
+        UI.message("#{s['attributes']['productId']} — state: #{s['attributes']['state']}")
+        res = asc_get("/v1/subscriptions/#{s['id']}/prices?include=subscriptionPricePoint,territory&limit=200")
+        points = (res["included"] || []).select { |i| i["type"] == "subscriptionPricePoints" }
+                                        .each_with_object({}) { |i, h| h[i["id"]] = i["attributes"] }
+        (res["data"] || []).each do |price|
+          terr = price.dig("relationships", "territory", "data", "id")
+          next unless want.include?(terr)
+          pp = points[price.dig("relationships", "subscriptionPricePoint", "data", "id")] || {}
+          UI.success("  #{terr}: customerPrice=#{pp['customerPrice']} proceeds=#{pp['proceeds']} startDate=#{price['attributes']['startDate'] || 'current'} preserved=#{price['attributes']['preserved']}")
+        end
+      end
+    end
+  end
 end
